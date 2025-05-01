@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{% block title %}Zemingo AI Image Generator{% endblock %}</title>
+    <title>{% block title %}Zemingo AI Asset Generator{% endblock %}</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;600&display=swap" rel="stylesheet">
@@ -185,7 +185,7 @@
         </a>
         
         <nav class="header-nav">
-            <a href="{{ url_for('user.dashboard') }}" class="nav-link {% if request.endpoint == 'user.dashboard' %}active{% endif %}">Dashboard</a>
+            <a href="{{ url_for('user.dashboard') }}" class="nav-link {% if request.endpoint == 'user.dashboard' %}active{% endif %}">Generator</a>
             <a href="{{ url_for('user.library') }}" class="nav-link {% if request.endpoint == 'user.library' or request.endpoint == 'user.asset_detail' %}active{% endif %}">Library</a>
             <a href="{{ url_for('user.usage_stats') }}" class="nav-link {% if request.endpoint == 'user.usage_stats' %}active{% endif %}">My Usage</a>
         </nav>
