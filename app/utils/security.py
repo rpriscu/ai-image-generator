@@ -28,7 +28,7 @@ def require_admin(f):
     def decorated_function(*args, **kwargs):
         if not is_admin_authenticated():
             logger.warning(f"Unauthorized admin access attempt to {request.path} from {request.remote_addr}")
-            return redirect(url_for('admin.login', next=request.url))
+            return redirect(url_for('auth.admin_login', next=request.url))
         return f(*args, **kwargs)
     return decorated_function
 
