@@ -186,6 +186,7 @@
         
         <nav class="header-nav">
             <a href="{{ url_for('user.dashboard') }}" class="nav-link {% if request.endpoint == 'user.dashboard' %}active{% endif %}">Dashboard</a>
+            <a href="{{ url_for('user.library') }}" class="nav-link {% if request.endpoint == 'user.library' or request.endpoint == 'user.asset_detail' %}active{% endif %}">Library</a>
             <a href="{{ url_for('user.usage_stats') }}" class="nav-link {% if request.endpoint == 'user.usage_stats' %}active{% endif %}">My Usage</a>
         </nav>
         

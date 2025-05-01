@@ -1,0 +1,250 @@
+{% extends "user/layout.html" %}
+
+{% block title %}Library - Zemingo AI Image Generator{% endblock %}
+
+{% block head %}
+<style>
+    .library-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 25px;
+    }
+    
+    .library-title {
+        margin: 0;
+        font-size: 32px;
+        font-weight: 600;
+    }
+    
+    .filters {
+        display: flex;
+        gap: 15px;
+        align-items: center;
+        background-color: var(--surface);
+        padding: 15px 20px;
+        border-radius: 8px;
+        margin-bottom: 25px;
+    }
+    
+    .filter-group {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+    
+    .filter-label {
+        font-weight: 500;
+        color: var(--text-secondary);
+    }
+    
+    .filter-select {
+        background-color: var(--surface-light);
+        border: 1px solid #444;
+        border-radius: 4px;
+        padding: 8px 12px;
+        color: var(--text);
+        font-family: 'Rubik', sans-serif;
+    }
+    
+    .filter-select option {
+        background-color: var(--surface-light);
+        color: var(--text);
+    }
+    
+    .asset-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+        gap: 20px;
+        margin-bottom: 30px;
+    }
+    
+    .asset-card {
+        background-color: var(--surface);
+        border-radius: 8px;
+        overflow: hidden;
+        transition: transform 0.2s, box-shadow 0.2s;
+        position: relative;
+    }
+    
+    .asset-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 10px 20px rgba(0, 0, 0, 0.3);
+    }
+    
+    .asset-thumbnail {
+        width: 100%;
+        aspect-ratio: 1 / 1;
+        object-fit: cover;
+        display: block;
+    }
+    
+    .asset-overlay {
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        width: 100%;
+        background: linear-gradient(transparent, rgba(0, 0, 0, 0.8));
+        padding: 20px 15px 15px;
+        box-sizing: border-box;
+    }
+    
+    .asset-type {
+        position: absolute;
+        top: 10px;
+        right: 10px;
+        background-color: var(--primary);
+        color: white;
+        padding: 4px 8px;
+        border-radius: 4px;
+        font-size: 12px;
+        font-weight: 500;
+        text-transform: uppercase;
+    }
+    
+    .asset-model {
+        font-size: 13px;
+        color: var(--text-secondary);
+        margin-bottom: 5px;
+    }
+    
+    .asset-date {
+        font-size: 12px;
+        color: var(--text-secondary);
+    }
+    
+    .asset-actions {
+        position: absolute;
+        top: 10px;
+        left: 10px;
+        display: flex;
+        gap: 8px;
+        opacity: 0;
+        transition: opacity 0.2s;
+    }
+    
+    .asset-card:hover .asset-actions {
+        opacity: 1;
+    }
+    
+    .asset-action {
+        background-color: rgba(0, 0, 0, 0.6);
+        color: white;
+        width: 32px;
+        height: 32px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        text-decoration: none;
+        transition: background-color 0.2s;
+    }
+    
+    .asset-action:hover {
+        background-color: var(--primary);
+    }
+    
+    .empty-library {
+        text-align: center;
+        padding: 50px 20px;
+        color: var(--text-secondary);
+    }
+    
+    .empty-library h3 {
+        font-size: 24px;
+        margin-bottom: 15px;
+    }
+    
+    .empty-library p {
+        margin-bottom: 25px;
+    }
+    
+    .empty-library a {
+        background-color: var(--primary);
+        color: white;
+        padding: 10px 20px;
+        border-radius: 4px;
+        text-decoration: none;
+        font-weight: 500;
+        transition: background-color 0.2s;
+    }
+    
+    .empty-library a:hover {
+        background-color: #7722ff;
+    }
+    
+    @media (max-width: 768px) {
+        .library-header {
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 15px;
+        }
+        
+        .filters {
+            flex-direction: column;
+            align-items: flex-start;
+        }
+        
+        .asset-grid {
+            grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="library-header">
+    <h1 class="library-title">My Library</h1>
+</div>
+
+<div class="filters">
+    <form id="filter-form" method="get" action="{{ url_for('user.library') }}">
+        <div class="filter-group">
+            <label class="filter-label" for="type">Type:</label>
+            <select class="filter-select" id="type" name="type" onchange="document.getElementById('filter-form').submit()">
+                <option value="all" {% if filter_type == 'all' %}selected{% endif %}>All</option>
+                <option value="image" {% if filter_type == 'image' %}selected{% endif %}>Images</option>
+                <option value="video" {% if filter_type == 'video' %}selected{% endif %}>Videos</option>
+                <option value="animation" {% if filter_type == 'animation' %}selected{% endif %}>Animations</option>
+            </select>
+            
+            <label class="filter-label" for="sort">Sort by:</label>
+            <select class="filter-select" id="sort" name="sort" onchange="document.getElementById('filter-form').submit()">
+                <option value="newest" {% if sort_by == 'newest' %}selected{% endif %}>Newest first</option>
+                <option value="oldest" {% if sort_by == 'oldest' %}selected{% endif %}>Oldest first</option>
+            </select>
+        </div>
+    </form>
+</div>
+
+{% if assets %}
+<div class="asset-grid">
+    {% for asset in assets %}
+    <div class="asset-card">
+        <div class="asset-type">{{ asset.type.value }}</div>
+        <a href="{{ url_for('user.asset_detail', asset_id=asset.id) }}">
+            <img src="{{ asset.file_url }}" alt="Asset #{{ asset.id }}" class="asset-thumbnail">
+        </a>
+        <div class="asset-actions">
+            <a href="{{ url_for('user.asset_download', asset_id=asset.id) }}" class="asset-action" title="Download">
+                <i class="fas fa-download"></i>
+            </a>
+            <a href="{{ url_for('user.asset_detail', asset_id=asset.id) }}" class="asset-action" title="View details">
+                <i class="fas fa-info"></i>
+            </a>
+        </div>
+        <div class="asset-overlay">
+            <div class="asset-model">{{ asset.model }}</div>
+            <div class="asset-date">{{ asset.created_at.strftime('%Y-%m-%d %H:%M') }}</div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% else %}
+<div class="empty-library">
+    <h3>Your library is empty</h3>
+    <p>Start generating images to build your library!</p>
+    <a href="{{ url_for('user.dashboard') }}">Create your first asset</a>
+</div>
+{% endif %}
+{% endblock %} 

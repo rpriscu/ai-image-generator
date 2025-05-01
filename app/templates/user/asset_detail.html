@@ -1,0 +1,184 @@
+{% extends "user/layout.html" %}
+
+{% block title %}Asset Detail - Zemingo AI Image Generator{% endblock %}
+
+{% block head %}
+<style>
+    .back-link {
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        text-decoration: none;
+        color: var(--primary-light);
+        margin-bottom: 20px;
+        transition: color 0.2s;
+    }
+    
+    .back-link:hover {
+        color: var(--primary);
+    }
+    
+    .asset-detail-container {
+        display: flex;
+        gap: 30px;
+        margin-bottom: 50px;
+    }
+    
+    .asset-image-container {
+        flex: 2;
+        background-color: var(--surface);
+        border-radius: 8px;
+        overflow: hidden;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+    }
+    
+    .asset-image {
+        width: 100%;
+        height: auto;
+        display: block;
+    }
+    
+    .asset-video {
+        width: 100%;
+        display: block;
+    }
+    
+    .asset-info {
+        flex: 1;
+        background-color: var(--surface);
+        border-radius: 8px;
+        padding: 25px;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+    }
+    
+    .asset-title {
+        font-size: 24px;
+        margin-top: 0;
+        margin-bottom: 20px;
+        color: var(--primary-light);
+    }
+    
+    .asset-meta {
+        margin-bottom: 30px;
+    }
+    
+    .asset-meta-row {
+        display: flex;
+        margin-bottom: 15px;
+    }
+    
+    .meta-label {
+        flex: 1;
+        color: var(--text-secondary);
+        font-weight: 500;
+    }
+    
+    .meta-value {
+        flex: 2;
+        word-break: break-word;
+    }
+    
+    .asset-prompt {
+        background-color: var(--surface-light);
+        border-radius: 6px;
+        padding: 15px;
+        margin-bottom: 30px;
+        line-height: 1.6;
+        color: var(--text);
+    }
+    
+    .asset-actions {
+        display: flex;
+        gap: 15px;
+    }
+    
+    .action-button {
+        background-color: var(--primary);
+        color: white;
+        border: none;
+        border-radius: 4px;
+        padding: 12px 20px;
+        font-size: 16px;
+        font-weight: 500;
+        cursor: pointer;
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        transition: background-color 0.2s;
+    }
+    
+    .action-button:hover {
+        background-color: #7722ff;
+    }
+    
+    .action-button.secondary {
+        background-color: transparent;
+        border: 1px solid var(--primary-light);
+        color: var(--primary-light);
+    }
+    
+    .action-button.secondary:hover {
+        background-color: rgba(187, 134, 252, 0.1);
+    }
+    
+    @media (max-width: 968px) {
+        .asset-detail-container {
+            flex-direction: column;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<a href="{{ url_for('user.library') }}" class="back-link">
+    <i class="fas fa-arrow-left"></i> Back to Library
+</a>
+
+<div class="asset-detail-container">
+    <div class="asset-image-container">
+        {% if asset.type == asset.type.__class__.image %}
+            <img src="{{ asset.file_url }}" alt="Asset #{{ asset.id }}" class="asset-image">
+        {% elif asset.type == asset.type.__class__.video %}
+            <video src="{{ asset.file_url }}" controls class="asset-video"></video>
+        {% elif asset.type == asset.type.__class__.animation %}
+            <img src="{{ asset.file_url }}" alt="Asset #{{ asset.id }}" class="asset-image">
+        {% endif %}
+    </div>
+    
+    <div class="asset-info">
+        <h2 class="asset-title">Asset #{{ asset.id }}</h2>
+        
+        <div class="asset-meta">
+            <div class="asset-meta-row">
+                <div class="meta-label">Type</div>
+                <div class="meta-value">{{ asset.type.value|capitalize }}</div>
+            </div>
+            
+            <div class="asset-meta-row">
+                <div class="meta-label">Created</div>
+                <div class="meta-value">{{ asset.created_at.strftime('%Y-%m-%d %H:%M') }}</div>
+            </div>
+            
+            <div class="asset-meta-row">
+                <div class="meta-label">Model</div>
+                <div class="meta-value">{{ asset.model }}</div>
+            </div>
+        </div>
+        
+        <h3>Prompt</h3>
+        <div class="asset-prompt">
+            {{ asset.prompt }}
+        </div>
+        
+        <div class="asset-actions">
+            <a href="{{ url_for('user.asset_download', asset_id=asset.id) }}" class="action-button">
+                <i class="fas fa-download"></i> Download
+            </a>
+            <a href="{{ url_for('user.dashboard') }}?prompt={{ asset.prompt|urlencode }}" class="action-button secondary">
+                <i class="fas fa-sync"></i> Regenerate
+            </a>
+        </div>
+    </div>
+</div>
+{% endblock %} 

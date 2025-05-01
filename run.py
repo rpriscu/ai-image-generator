@@ -7,6 +7,9 @@ from app.models.models import db, User, MonthlyUsage, Admin
 import os
 import logging
 from logging.handlers import RotatingFileHandler
+from app.services.fal_api import fal_api_service
+import shutil
+import atexit
 
 def setup_logging(app):
     """Configure application logging with rotating file handler"""
@@ -35,6 +38,27 @@ app = create_app()
 
 # Set up logging
 setup_logging(app)
+
+# Initialize services
+with app.app_context():
+    fal_api_service.init_app(app)
+    
+    # Create temporary directory for downloads
+    temp_dir = os.path.join(app.root_path, 'static', 'temp')
+    os.makedirs(temp_dir, exist_ok=True)
+    
+    # Register cleanup function for temp directory
+    def cleanup_temp_dir():
+        try:
+            if os.path.exists(temp_dir):
+                shutil.rmtree(temp_dir)
+                os.makedirs(temp_dir, exist_ok=True)
+                logging.info(f"Cleaned up temporary directory: {temp_dir}")
+        except Exception as e:
+            logging.error(f"Error cleaning up temp directory: {str(e)}")
+    
+    # Register cleanup function to run on application exit
+    atexit.register(cleanup_temp_dir)
 
 @app.shell_context_processor
 def make_shell_context():

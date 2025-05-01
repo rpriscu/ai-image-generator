@@ -542,6 +542,18 @@
             });
         });
         
+        // Select the first model option by default
+        if (modelOptions.length > 0 && !document.querySelector('.model-option.selected')) {
+            modelOptions[0].click();
+        }
+        
+        // Populate prompt from URL parameter if present
+        const urlParams = new URLSearchParams(window.location.search);
+        const promptParam = urlParams.get('prompt');
+        if (promptParam) {
+            document.getElementById('prompt').value = promptParam;
+        }
+        
         // Handle form submission
         promptForm.addEventListener('submit', async function(e) {
             e.preventDefault();

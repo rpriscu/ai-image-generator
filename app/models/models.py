@@ -2,6 +2,7 @@ from flask_sqlalchemy import SQLAlchemy
 from datetime import datetime
 from werkzeug.security import generate_password_hash, check_password_hash
 from flask_login import UserMixin
+import enum
 
 db = SQLAlchemy()
 
@@ -16,6 +17,7 @@ class User(db.Model, UserMixin):
     last_login = db.Column(db.DateTime, default=datetime.utcnow)
     
     usage = db.relationship("MonthlyUsage", backref="user", lazy=True, cascade="all, delete-orphan")
+    assets = db.relationship("Asset", backref="user", lazy=True, cascade="all, delete-orphan")
     
     def __repr__(self):
         return f'<User {self.email}>'
@@ -41,6 +43,36 @@ class MonthlyUsage(db.Model):
     
     def __repr__(self):
         return f'<MonthlyUsage {self.user.email} {self.month}: {self.request_count}>'
+
+class AssetType(enum.Enum):
+    """Types of assets that can be stored"""
+    image = "image"
+    video = "video" 
+    animation = "animation"
+
+class Asset(db.Model):
+    """Asset model for storing generated content"""
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=False)
+    file_url = db.Column(db.String(255), nullable=False)
+    type = db.Column(db.Enum(AssetType), nullable=False, default=AssetType.image)
+    prompt = db.Column(db.Text)
+    model = db.Column(db.String(255))
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    def __repr__(self):
+        return f'<Asset {self.id} by {self.user_id}: {self.type.value}>'
+    
+    def to_dict(self):
+        """Convert the asset to a dictionary for API responses"""
+        return {
+            'id': self.id,
+            'file_url': self.file_url,
+            'type': self.type.value,
+            'prompt': self.prompt,
+            'model': self.model,
+            'created_at': self.created_at.isoformat()
+        }
 
 class Admin(db.Model):
     """Admin user model with username/password authentication"""
