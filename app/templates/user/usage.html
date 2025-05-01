@@ -1,0 +1,127 @@
+{% extends "user/layout.html" %}
+
+{% block title %}My Usage - Zemingo AI Image Generator{% endblock %}
+
+{% block head %}
+<style>
+    .usage-container {
+        display: flex;
+        flex-direction: column;
+        gap: 30px;
+    }
+    
+    .usage-card {
+        background-color: var(--surface);
+        border-radius: 8px;
+        padding: 25px;
+        box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+    }
+    
+    .current-usage {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding: 30px 0;
+        text-align: center;
+    }
+    
+    .usage-count {
+        font-size: 72px;
+        font-weight: 600;
+        color: var(--primary-light);
+        line-height: 1;
+    }
+    
+    .usage-label {
+        font-size: 18px;
+        color: var(--text-secondary);
+        margin-top: 10px;
+    }
+    
+    .usage-table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 20px;
+    }
+    
+    .usage-table th,
+    .usage-table td {
+        padding: 12px 15px;
+        text-align: left;
+        border-bottom: 1px solid #333;
+    }
+    
+    .usage-table th {
+        font-weight: 500;
+        color: var(--text-secondary);
+        font-size: 14px;
+    }
+    
+    .usage-table td {
+        font-size: 16px;
+    }
+    
+    .usage-table tr:last-child td {
+        border-bottom: none;
+    }
+    
+    .empty-history {
+        text-align: center;
+        color: var(--text-secondary);
+        padding: 30px 0;
+    }
+    
+    .info-text {
+        background-color: rgba(33, 150, 243, 0.1);
+        border-left: 4px solid var(--info);
+        padding: 15px;
+        margin-top: 20px;
+        border-radius: 0 4px 4px 0;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="usage-container">
+    <div class="usage-card">
+        <h1>My Usage Statistics</h1>
+        
+        <div class="current-usage">
+            <div class="usage-count">{{ current_usage }}</div>
+            <div class="usage-label">Images generated this month</div>
+        </div>
+        
+        <div class="info-text">
+            Each image generation counts as one usage. The usage counter resets at the beginning of each month.
+        </div>
+    </div>
+    
+    <div class="usage-card">
+        <h2>Usage History</h2>
+        
+        {% if usage_history %}
+            <table class="usage-table">
+                <thead>
+                    <tr>
+                        <th>Month</th>
+                        <th>Images Generated</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for usage in usage_history %}
+                        <tr>
+                            <td>{{ usage.month }}</td>
+                            <td>{{ usage.request_count }}</td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        {% else %}
+            <div class="empty-history">
+                No usage history available yet.
+            </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %} 

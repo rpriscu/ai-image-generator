@@ -1,0 +1,345 @@
+{% extends "admin/layout.html" %}
+
+{% block title %}Manage Users - Admin Panel{% endblock %}
+{% block page_title %}Manage Users{% endblock %}
+
+{% block head %}
+<style>
+    .table-responsive {
+        overflow-x: auto;
+    }
+    
+    .admin-table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+    
+    .admin-table th,
+    .admin-table td {
+        padding: 12px 15px;
+        text-align: left;
+        border-bottom: 1px solid #333;
+    }
+    
+    .admin-table th {
+        font-weight: 500;
+        color: var(--text-secondary);
+        font-size: 14px;
+    }
+    
+    .admin-table td {
+        font-size: 16px;
+    }
+    
+    .admin-table tr:last-child td {
+        border-bottom: none;
+    }
+    
+    .user-avatar {
+        width: 32px;
+        height: 32px;
+        border-radius: 50%;
+        object-fit: cover;
+        margin-right: 10px;
+    }
+    
+    .user-info {
+        display: flex;
+        align-items: center;
+    }
+    
+    .badge {
+        display: inline-block;
+        padding: 4px 8px;
+        border-radius: 4px;
+        font-size: 12px;
+        font-weight: 500;
+    }
+    
+    .badge-active {
+        background-color: rgba(76, 175, 80, 0.2);
+        color: var(--success);
+    }
+    
+    .badge-inactive {
+        background-color: rgba(244, 67, 54, 0.2);
+        color: var(--error);
+    }
+    
+    .actions {
+        display: flex;
+        gap: 10px;
+    }
+    
+    .btn {
+        padding: 6px 10px;
+        border-radius: 4px;
+        font-size: 12px;
+        font-weight: 500;
+        cursor: pointer;
+        border: none;
+        transition: background-color 0.2s;
+    }
+    
+    .btn-primary {
+        background-color: var(--primary);
+        color: white;
+    }
+    
+    .btn-primary:hover {
+        background-color: #7722ff;
+    }
+    
+    .btn-success {
+        background-color: var(--success);
+        color: white;
+    }
+    
+    .btn-success:hover {
+        background-color: #45a049;
+    }
+    
+    .btn-warning {
+        background-color: var(--warning);
+        color: white;
+    }
+    
+    .btn-warning:hover {
+        background-color: #e68a00;
+    }
+    
+    .btn-danger {
+        background-color: var(--error);
+        color: white;
+    }
+    
+    .btn-danger:hover {
+        background-color: #d32f2f;
+    }
+    
+    .empty-list {
+        text-align: center;
+        color: var(--text-secondary);
+        padding: 30px 0;
+    }
+    
+    .confirm-dialog {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background-color: rgba(0, 0, 0, 0.5);
+        z-index: 1000;
+        justify-content: center;
+        align-items: center;
+    }
+    
+    .dialog-content {
+        background-color: var(--surface);
+        border-radius: 8px;
+        width: 100%;
+        max-width: 400px;
+        padding: 25px;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.6);
+    }
+    
+    .dialog-title {
+        margin-top: 0;
+        margin-bottom: 20px;
+        font-size: 20px;
+    }
+    
+    .dialog-message {
+        margin-bottom: 25px;
+        line-height: 1.5;
+    }
+    
+    .dialog-actions {
+        display: flex;
+        justify-content: flex-end;
+        gap: 10px;
+    }
+    
+    .search-bar {
+        margin-bottom: 20px;
+        display: flex;
+        gap: 10px;
+    }
+    
+    .search-input {
+        flex: 1;
+        padding: 10px 15px;
+        border: 1px solid #333;
+        border-radius: 4px;
+        background-color: var(--surface-light);
+        color: var(--text);
+        font-family: 'Rubik', sans-serif;
+        font-size: 15px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="card">
+    <h2 class="card-title">All Users</h2>
+    
+    <div class="search-bar">
+        <input type="text" id="searchInput" class="search-input" placeholder="Search by name or email...">
+    </div>
+    
+    {% if users %}
+        <div class="table-responsive">
+            <table class="admin-table" id="usersTable">
+                <thead>
+                    <tr>
+                        <th>User</th>
+                        <th>Email</th>
+                        <th>Status</th>
+                        <th>Joined</th>
+                        <th>Usage ({{ current_month }})</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for user in users %}
+                        <tr data-user-id="{{ user.id }}" data-user-email="{{ user.email }}">
+                            <td class="user-info">
+                                {% if user.picture %}
+                                    <img src="{{ user.picture }}" alt="{{ user.name }}" class="user-avatar">
+                                {% else %}
+                                    <div class="user-avatar" style="background-color: var(--primary); display: flex; align-items: center; justify-content: center;">
+                                        {{ user.name[0]|upper if user.name else user.email[0]|upper }}
+                                    </div>
+                                {% endif %}
+                                <span>{{ user.name or 'N/A' }}</span>
+                            </td>
+                            <td>{{ user.email }}</td>
+                            <td>
+                                {% if user.is_active %}
+                                    <span class="badge badge-active">Active</span>
+                                {% else %}
+                                    <span class="badge badge-inactive">Inactive</span>
+                                {% endif %}
+                            </td>
+                            <td>{{ user.created_at.strftime('%d %b %Y') }}</td>
+                            <td>{{ usage_data.get(user.id, 0) }}</td>
+                            <td class="actions">
+                                <button class="btn btn-primary" onclick="viewUser({{ user.id }})">View</button>
+                                
+                                {% if user.is_active %}
+                                    <button class="btn btn-warning" onclick="confirmToggleStatus({{ user.id }}, '{{ user.email }}', false)">Deactivate</button>
+                                {% else %}
+                                    <button class="btn btn-success" onclick="confirmToggleStatus({{ user.id }}, '{{ user.email }}', true)">Activate</button>
+                                {% endif %}
+                                
+                                <button class="btn btn-danger" onclick="confirmDelete({{ user.id }}, '{{ user.email }}')">Delete</button>
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    {% else %}
+        <div class="empty-list">
+            No users registered yet.
+        </div>
+    {% endif %}
+</div>
+
+<!-- Dialogs -->
+<div id="statusDialog" class="confirm-dialog">
+    <div class="dialog-content">
+        <h3 class="dialog-title">Confirm Status Change</h3>
+        <p class="dialog-message" id="statusMessage"></p>
+        <div class="dialog-actions">
+            <button class="btn" onclick="closeDialog('statusDialog')">Cancel</button>
+            <form id="statusForm" method="POST">
+                <button type="submit" class="btn btn-primary">Confirm</button>
+            </form>
+        </div>
+    </div>
+</div>
+
+<div id="deleteDialog" class="confirm-dialog">
+    <div class="dialog-content">
+        <h3 class="dialog-title">Confirm Deletion</h3>
+        <p class="dialog-message" id="deleteMessage"></p>
+        <div class="dialog-actions">
+            <button class="btn" onclick="closeDialog('deleteDialog')">Cancel</button>
+            <form id="deleteForm" method="POST">
+                <button type="submit" class="btn btn-danger">Delete</button>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // View user details
+    function viewUser(userId) {
+        window.location.href = "{{ url_for('admin.user_detail', user_id=0) }}".replace('0', userId);
+    }
+    
+    // Toggle user status confirmation
+    function confirmToggleStatus(userId, email, activate) {
+        var dialog = document.getElementById('statusDialog');
+        var message = document.getElementById('statusMessage');
+        var form = document.getElementById('statusForm');
+        
+        if (activate) {
+            message.textContent = "Are you sure you want to activate user \"" + email + "\"?";
+        } else {
+            message.textContent = "Are you sure you want to deactivate user \"" + email + "\"?";
+        }
+            
+        form.action = "{{ url_for('admin.toggle_user_status', user_id=0) }}".replace('0', userId);
+        
+        dialog.style.display = 'flex';
+    }
+    
+    // Delete user confirmation
+    function confirmDelete(userId, email) {
+        var dialog = document.getElementById('deleteDialog');
+        var message = document.getElementById('deleteMessage');
+        var form = document.getElementById('deleteForm');
+        
+        message.textContent = "Are you sure you want to delete user \"" + email + "\"? This action cannot be undone.";
+        form.action = "{{ url_for('admin.delete_user', user_id=0) }}".replace('0', userId);
+        
+        dialog.style.display = 'flex';
+    }
+    
+    // Close dialog
+    function closeDialog(dialogId) {
+        document.getElementById(dialogId).style.display = 'none';
+    }
+    
+    // Search functionality
+    document.addEventListener('DOMContentLoaded', function() {
+        var searchInput = document.getElementById('searchInput');
+        var table = document.getElementById('usersTable');
+        
+        if (table) {
+            var rows = table.getElementsByTagName('tr');
+            
+            searchInput.addEventListener('keyup', function() {
+                var query = searchInput.value.toLowerCase();
+                
+                for (var i = 1; i < rows.length; i++) {
+                    var userEmail = rows[i].getAttribute('data-user-email').toLowerCase();
+                    var userName = rows[i].querySelector('.user-info span').textContent.toLowerCase();
+                    
+                    if (userEmail.includes(query) || userName.includes(query)) {
+                        rows[i].style.display = '';
+                    } else {
+                        rows[i].style.display = 'none';
+                    }
+                }
+            });
+        }
+    });
+</script>
+{% endblock %} 

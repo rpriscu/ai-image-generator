@@ -1,0 +1,216 @@
+{% extends "admin/layout.html" %}
+
+{% block title %}Usage Report - Admin Panel{% endblock %}
+
+{% block content %}
+<div class="header-bar">
+    <h1 class="page-title">Usage Report</h1>
+    <div class="filters" style="display: flex; align-items: center;">
+        <form method="get" action="{{ url_for('admin.usage_report') }}" style="position: relative;">
+            <select name="month" onchange="this.form.submit()" style="padding: 10px 16px; padding-right: 40px; border-radius: 6px; border: 2px solid #bb86fc; background-color: #2a2a2a; color: white; font-size: 15px; font-weight: 500; appearance: none; cursor: pointer; transition: border-color 0.2s, box-shadow 0.2s; box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);">
+                {% for month in months %}
+                <option value="{{ month }}" {% if month == selected_month %}selected{% endif %}>
+                    {{ month }}
+                </option>
+                {% endfor %}
+            </select>
+            <div style="content: ''; position: absolute; top: 50%; right: 15px; transform: translateY(-50%); width: 0; height: 0; border-left: 6px solid transparent; border-right: 6px solid transparent; border-top: 8px solid #bb86fc; pointer-events: none;"></div>
+        </form>
+    </div>
+</div>
+
+<div class="content-container">
+    <div class="card">
+        <div class="card-header">
+            <h2 class="card-title">Image Generation Usage for {{ selected_month }}</h2>
+            <div class="card-subtitle">Total images: {{ total_usage }}</div>
+        </div>
+        
+        {% if usage_data %}
+            <table style="width: 100%; border-collapse: separate; border-spacing: 0; margin-top: 20px; margin-bottom: 20px;">
+                <thead>
+                    <tr style="background-color: #2a2a2a;">
+                        <th style="padding: 16px 20px; text-align: left; border-bottom: 1px solid #333; font-weight: 500; color: #b0b0b0; position: relative;">
+                            User
+                            <span style="content: ''; position: absolute; top: 25%; right: 0; height: 50%; width: 1px; background-color: #333;"></span>
+                        </th>
+                        <th style="padding: 16px 20px; text-align: left; border-bottom: 1px solid #333; font-weight: 500; color: #b0b0b0; position: relative;">
+                            Email
+                            <span style="content: ''; position: absolute; top: 25%; right: 0; height: 50%; width: 1px; background-color: #333;"></span>
+                        </th>
+                        <th style="padding: 16px 20px; text-align: right; border-bottom: 1px solid #333; font-weight: 500; color: #b0b0b0; position: relative;">
+                            Images Generated
+                            <span style="content: ''; position: absolute; top: 25%; right: 0; height: 50%; width: 1px; background-color: #333;"></span>
+                        </th>
+                        <th style="padding: 16px 20px; text-align: right; border-bottom: 1px solid #333; font-weight: 500; color: #b0b0b0;">
+                            % of Total
+                        </th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for user, count in usage_data %}
+                        <tr style="transition: background-color 0.2s;" onmouseover="this.style.backgroundColor='rgba(255, 255, 255, 0.05)'" onmouseout="this.style.backgroundColor='transparent'">
+                            <td style="padding: 16px 20px; text-align: left; border-bottom: 1px solid #333;">
+                                <a href="{{ url_for('admin.user_detail', user_id=user.id) }}" style="color: #bb86fc; text-decoration: none; font-weight: 500; transition: color 0.2s; display: inline-block; position: relative;" onmouseover="this.style.color='#6200ee'" onmouseout="this.style.color='#bb86fc'">
+                                    {{ user.name or "No name" }}
+                                </a>
+                            </td>
+                            <td style="padding: 16px 20px; text-align: left; border-bottom: 1px solid #333;">{{ user.email }}</td>
+                            <td style="padding: 16px 20px; text-align: right; border-bottom: 1px solid #333;">{{ count }}</td>
+                            <td style="padding: 16px 20px; text-align: right; border-bottom: 1px solid #333;">
+                                {{ "%.1f"|format(count / total_usage * 100) if total_usage else 0 }}%
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        {% else %}
+            <div class="empty-state">
+                No usage data available for this month.
+            </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+
+{% block styles %}
+<style>
+    .filters {
+        display: flex;
+        align-items: center;
+    }
+    
+    .month-selector {
+        position: relative;
+    }
+    
+    .month-selector select {
+        padding: 10px 16px;
+        padding-right: 40px;
+        border-radius: 6px;
+        border: 2px solid var(--primary-light);
+        background-color: var(--surface-light);
+        color: var(--text);
+        font-size: 15px;
+        font-weight: 500;
+        appearance: none;
+        cursor: pointer;
+        transition: border-color 0.2s, box-shadow 0.2s;
+        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+    }
+    
+    .month-selector::after {
+        content: "";
+        position: absolute;
+        top: 50%;
+        right: 15px;
+        transform: translateY(-50%);
+        width: 0;
+        height: 0;
+        border-left: 6px solid transparent;
+        border-right: 6px solid transparent;
+        border-top: 8px solid var(--primary-light);
+        pointer-events: none;
+    }
+    
+    .month-selector select:hover {
+        border-color: var(--primary);
+    }
+    
+    .month-selector select:focus {
+        outline: none;
+        box-shadow: 0 0 0 3px rgba(187, 134, 252, 0.3);
+    }
+    
+    .data-table {
+        width: 100%;
+        border-collapse: separate;
+        border-spacing: 0;
+        margin-top: 20px;
+    }
+    
+    .data-table th,
+    .data-table td {
+        padding: 16px 20px;
+        text-align: left;
+        border-bottom: 1px solid #333;
+    }
+    
+    .data-table thead tr {
+        background-color: var(--surface-light);
+    }
+    
+    .data-table th {
+        font-weight: 500;
+        color: var(--text-secondary);
+        position: relative;
+    }
+    
+    .data-table th:after {
+        content: "";
+        position: absolute;
+        top: 50%;
+        right: 0;
+        height: 50%;
+        width: 1px;
+        background-color: #333;
+        transform: translateY(-50%);
+    }
+    
+    .data-table th:last-child:after {
+        display: none;
+    }
+    
+    .data-table tbody tr:hover {
+        background-color: rgba(255, 255, 255, 0.05);
+    }
+    
+    .right-align {
+        text-align: right;
+    }
+    
+    .user-link {
+        color: var(--primary-light);
+        text-decoration: none;
+        font-weight: 500;
+        transition: color 0.2s;
+        display: inline-block;
+        position: relative;
+    }
+    
+    .user-link:after {
+        content: '';
+        position: absolute;
+        width: 100%;
+        height: 2px;
+        bottom: -2px;
+        left: 0;
+        background-color: var(--primary-light);
+        transform: scaleX(0);
+        transform-origin: bottom right;
+        transition: transform 0.3s;
+    }
+    
+    .user-link:hover {
+        color: var(--primary);
+    }
+    
+    .user-link:hover:after {
+        transform: scaleX(1);
+        transform-origin: bottom left;
+    }
+    
+    .empty-state {
+        padding: 40px;
+        text-align: center;
+        color: var(--text-secondary);
+        font-size: 16px;
+    }
+    
+    .card-subtitle {
+        color: var(--text-secondary);
+        margin-top: 8px;
+        font-size: 16px;
+    }
+</style>
+{% endblock %} 

@@ -1,0 +1,370 @@
+{% extends "admin/layout.html" %}
+
+{% block title %}User Details - Admin Panel{% endblock %}
+
+{% block content %}
+<div class="header-bar">
+    <h1 class="page-title">User Details</h1>
+    <a href="{{ url_for('admin.user_list') }}" class="back-btn">
+        Back to User List
+    </a>
+</div>
+
+<div class="content-grid">
+    <div class="card">
+        <h2 class="card-title">User Information</h2>
+        <div class="user-info">
+            {% if user.picture %}
+                <img src="{{ user.picture }}" alt="{{ user.name }}" class="user-avatar mb-3">
+            {% else %}
+                <div class="user-avatar" style="background-color: var(--primary); display: flex; align-items: center; justify-content: center; width: 80px; height: 80px; border-radius: 50%; margin-bottom: 20px;">
+                    {{ user.name[0]|upper if user.name else user.email[0]|upper }}
+                </div>
+            {% endif %}
+            
+            <h3 class="user-name">{{ user.name or "No name provided" }}</h3>
+            <p class="user-email">{{ user.email }}</p>
+            
+            <div class="user-status">
+                <span class="status-badge {{ 'active' if user.is_active else 'inactive' }}">
+                    {{ 'Active' if user.is_active else 'Inactive' }}
+                </span>
+            </div>
+            
+            <div class="user-details">
+                <div class="detail-item">
+                    <div class="detail-label">Joined:</div>
+                    <div class="detail-value">{{ user.created_at.strftime('%Y-%m-%d') }}</div>
+                </div>
+                
+                <div class="detail-item">
+                    <div class="detail-label">Last Login:</div>
+                    <div class="detail-value">{{ user.last_login.strftime('%Y-%m-%d %H:%M') }}</div>
+                </div>
+            </div>
+            
+            <div class="user-actions" style="display: flex; gap: 15px; margin-top: 20px;">
+                <form action="{{ url_for('admin.toggle_user_status', user_id=user.id) }}" method="post" style="display: inline;">
+                    {% if user.is_active %}
+                        <button type="submit" style="padding: 12px 24px; border: none; border-radius: 6px; font-size: 15px; font-weight: 600; cursor: pointer; transition: all 0.3s; display: inline-flex; align-items: center; justify-content: center; box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2); background-color: #f44336; color: white;" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 8px rgba(0, 0, 0, 0.3)'" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 2px 5px rgba(0, 0, 0, 0.2)'">
+                            Deactivate User
+                        </button>
+                    {% else %}
+                        <button type="submit" style="padding: 12px 24px; border: none; border-radius: 6px; font-size: 15px; font-weight: 600; cursor: pointer; transition: all 0.3s; display: inline-flex; align-items: center; justify-content: center; box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2); background-color: #4caf50; color: white;" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 8px rgba(0, 0, 0, 0.3)'" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 2px 5px rgba(0, 0, 0, 0.2)'">
+                            Activate User
+                        </button>
+                    {% endif %}
+                </form>
+                
+                <button type="button" onclick="confirmDelete()" style="padding: 12px 24px; border: none; border-radius: 6px; font-size: 15px; font-weight: 600; cursor: pointer; transition: all 0.3s; display: inline-flex; align-items: center; justify-content: center; box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2); background-color: #f44336; color: white;" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 8px rgba(0, 0, 0, 0.3)'" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 2px 5px rgba(0, 0, 0, 0.2)'">
+                    Delete User
+                </button>
+            </div>
+        </div>
+    </div>
+    
+    <div class="card">
+        <h2 class="card-title">Usage History</h2>
+        {% if usage_history %}
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Month</th>
+                        <th class="right-align">Images Generated</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for usage in usage_history %}
+                        <tr>
+                            <td>{{ usage.month }}</td>
+                            <td class="right-align">{{ usage.request_count }}</td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+                <tfoot>
+                    <tr>
+                        <th>Total</th>
+                        <th class="right-align">{{ usage_history|sum(attribute='request_count') }}</th>
+                    </tr>
+                </tfoot>
+            </table>
+        {% else %}
+            <div class="empty-state">
+                This user has not generated any images yet.
+            </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Delete confirmation dialog -->
+<div id="delete-dialog" class="dialog">
+    <div class="dialog-content">
+        <h3 class="dialog-title">Confirm Deletion</h3>
+        <p class="dialog-message">Are you sure you want to delete this user? This action cannot be undone.</p>
+        <p class="important">{{ user.email }}</p>
+        <p class="dialog-warning">All usage history will also be deleted.</p>
+        
+        <div class="dialog-actions" style="display: flex; justify-content: flex-end; gap: 15px; margin-top: 30px;">
+            <button onclick="closeDialog()" style="padding: 12px 24px; border: 2px solid #444; border-radius: 6px; font-size: 15px; font-weight: 600; cursor: pointer; transition: all 0.3s; display: inline-flex; align-items: center; justify-content: center; box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2); background-color: #2a2a2a; color: white;" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 8px rgba(0, 0, 0, 0.3)'" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 2px 5px rgba(0, 0, 0, 0.2)'">
+                Cancel
+            </button>
+            <form action="{{ url_for('admin.delete_user', user_id=user.id) }}" method="post">
+                <button type="submit" style="padding: 12px 24px; border: none; border-radius: 6px; font-size: 15px; font-weight: 600; cursor: pointer; transition: all 0.3s; display: inline-flex; align-items: center; justify-content: center; box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2); background-color: #f44336; color: white;" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 8px rgba(0, 0, 0, 0.3)'" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 2px 5px rgba(0, 0, 0, 0.2)'">
+                    Delete User
+                </button>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block styles %}
+<style>
+    .content-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+        gap: 30px;
+    }
+    
+    .back-btn {
+        color: var(--text-secondary);
+        text-decoration: none;
+        padding: 8px 16px;
+        border: 1px solid #333;
+        border-radius: 4px;
+        transition: all 0.2s;
+    }
+    
+    .back-btn:hover {
+        color: var(--text);
+        border-color: var(--text);
+    }
+    
+    .user-info {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
+    }
+    
+    .user-avatar {
+        width: 80px;
+        height: 80px;
+        border-radius: 50%;
+        object-fit: cover;
+        margin-bottom: 20px;
+    }
+    
+    .user-name {
+        font-size: 24px;
+        margin: 0 0 5px 0;
+    }
+    
+    .user-email {
+        color: var(--text-secondary);
+        margin: 0 0 15px 0;
+    }
+    
+    .user-status {
+        margin-bottom: 20px;
+    }
+    
+    .status-badge {
+        display: inline-block;
+        padding: 5px 10px;
+        border-radius: 20px;
+        font-size: 14px;
+        font-weight: 500;
+    }
+    
+    .status-badge.active {
+        background-color: rgba(76, 175, 80, 0.2);
+        color: #4caf50;
+    }
+    
+    .status-badge.inactive {
+        background-color: rgba(244, 67, 54, 0.2);
+        color: #f44336;
+    }
+    
+    .user-details {
+        width: 100%;
+        max-width: 400px;
+        margin-bottom: 30px;
+    }
+    
+    .detail-item {
+        display: flex;
+        justify-content: space-between;
+        padding: 10px 0;
+        border-bottom: 1px solid #333;
+    }
+    
+    .detail-label {
+        color: var(--text-secondary);
+    }
+    
+    .user-actions {
+        display: flex;
+        gap: 15px;
+        margin-top: 20px;
+    }
+    
+    .inline-form {
+        display: inline;
+    }
+    
+    .action-btn {
+        padding: 12px 24px;
+        border: none;
+        border-radius: 6px;
+        font-size: 14px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.3s;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+    }
+    
+    .action-btn.success-btn {
+        background-color: var(--success);
+        color: white;
+    }
+    
+    .action-btn.success-btn:hover {
+        background-color: #45a049;
+        transform: translateY(-2px);
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+    }
+    
+    .action-btn.delete-btn {
+        background-color: var(--error);
+        color: white;
+    }
+    
+    .action-btn.delete-btn:hover {
+        background-color: #d32f2f;
+        transform: translateY(-2px);
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+    }
+    
+    .data-table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+    
+    .data-table th,
+    .data-table td {
+        padding: 12px 15px;
+        text-align: left;
+        border-bottom: 1px solid #333;
+    }
+    
+    .data-table th {
+        font-weight: 500;
+        color: var(--text-secondary);
+    }
+    
+    .right-align {
+        text-align: right;
+    }
+    
+    .empty-state {
+        padding: 30px;
+        text-align: center;
+        color: var(--text-secondary);
+    }
+    
+    .dialog {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(0, 0, 0, 0.5);
+        z-index: 1000;
+        align-items: center;
+        justify-content: center;
+    }
+    
+    .dialog-content {
+        background-color: var(--surface);
+        border-radius: 10px;
+        width: 100%;
+        max-width: 450px;
+        padding: 30px;
+        box-shadow: 0 8px 25px rgba(0, 0, 0, 0.8);
+    }
+    
+    .dialog-title {
+        margin-top: 0;
+        margin-bottom: 25px;
+        font-size: 22px;
+        color: var(--primary-light);
+        font-weight: 600;
+    }
+    
+    .dialog-message {
+        margin-bottom: 20px;
+        line-height: 1.6;
+        font-size: 16px;
+    }
+    
+    .dialog-warning {
+        color: var(--error);
+        font-weight: 500;
+        margin-top: 15px;
+    }
+    
+    .important {
+        font-weight: 600;
+        font-size: 18px;
+        background-color: rgba(244, 67, 54, 0.1);
+        padding: 8px 12px;
+        border-radius: 4px;
+        display: inline-block;
+    }
+    
+    .dialog-actions {
+        display: flex;
+        justify-content: flex-end;
+        gap: 15px;
+        margin-top: 30px;
+    }
+    
+    .action-btn.cancel-btn {
+        background-color: var(--surface-light);
+        color: var(--text);
+        border: 2px solid #444;
+    }
+    
+    .action-btn.cancel-btn:hover {
+        background-color: #333;
+        transform: translateY(-2px);
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+    }
+</style>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    function confirmDelete() {
+        document.getElementById('delete-dialog').style.display = 'flex';
+    }
+    
+    function closeDialog() {
+        document.getElementById('delete-dialog').style.display = 'none';
+    }
+    
+    // Close the dialog when clicking outside of it
+    window.onclick = function(event) {
+        const dialog = document.getElementById('delete-dialog');
+        if (event.target == dialog) {
+            closeDialog();
+        }
+    }
+</script>
+{% endblock %} 
