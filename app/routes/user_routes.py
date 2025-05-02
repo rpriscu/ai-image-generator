@@ -30,7 +30,7 @@ def dashboard():
     current_usage = usage_tracker.get_user_usage(user_id)
     
     # Check if FAL API key is configured
-    fal_api_key = current_app.config.get('FAL_API_KEY')
+    fal_api_key = current_app.config.get('FAL_KEY')
     if not fal_api_key:
         flash('Warning: FAL API key is not configured. Image generation will not work.', 'error')
         logger.warning("FAL API key not configured. Image generation will fail.")
@@ -290,4 +290,27 @@ def get_model_info(model_id):
         
     except Exception as e:
         logger.exception(f"Error getting model info: {str(e)}")
-        return jsonify({'error': str(e)}), 500 
+        return jsonify({'error': str(e)}), 500
+
+@user_bp.route('/debug-env')
+def debug_env():
+    """Debug endpoint to check environment variables"""
+    import os
+    from flask import current_app, jsonify
+    
+    debug_info = {
+        'FAL_KEY_ENV': os.environ.get('FAL_KEY', 'Not set in environment'),
+        'FAL_KEY_CONFIG': current_app.config.get('FAL_KEY', 'Not set in config'),
+        'FAL_API_BASE_URL': current_app.config.get('FAL_API_BASE_URL', 'Not set')
+    }
+    
+    # Only show first few characters of the API key for security if it exists
+    if debug_info['FAL_KEY_ENV'] != 'Not set in environment':
+        key_length = len(debug_info['FAL_KEY_ENV'])
+        debug_info['FAL_KEY_ENV'] = f"{debug_info['FAL_KEY_ENV'][:4]}...{debug_info['FAL_KEY_ENV'][-4:]} (length: {key_length})"
+    
+    if debug_info['FAL_KEY_CONFIG'] != 'Not set in config':
+        key_length = len(debug_info['FAL_KEY_CONFIG'])
+        debug_info['FAL_KEY_CONFIG'] = f"{debug_info['FAL_KEY_CONFIG'][:4]}...{debug_info['FAL_KEY_CONFIG'][-4:]} (length: {key_length})"
+    
+    return jsonify(debug_info) 

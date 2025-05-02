@@ -44,6 +44,10 @@ def register_context_processors(app):
     @app.context_processor
     def inject_datetime():
         return {'current_year': datetime.utcnow().year}
+    
+    @app.context_processor
+    def inject_is_production():
+        return {'is_production': 'PYTHONANYWHERE_SITE' in os.environ}
 
 def create_default_admin(app):
     """Create default admin user if none exists"""
@@ -58,6 +62,23 @@ def create_default_admin(app):
                 password=app.config.get('ADMIN_PASSWORD')
             )
 
+def configure_database(app):
+    """Configure database connection based on environment"""
+    if 'PYTHONANYWHERE_SITE' in os.environ:
+        from app.utils.db_config import get_engine_url
+        
+        # Get engine configuration
+        engine_config = get_engine_url(app)
+        
+        # Update database URI if provided
+        if engine_config.get('url'):
+            app.config['SQLALCHEMY_DATABASE_URI'] = engine_config.get('url')
+        
+        # Set engine options for PostgreSQL on PythonAnywhere
+        if isinstance(engine_config, dict) and 'connect_args' in engine_config:
+            app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {'connect_args': engine_config['connect_args']}
+            app.logger.info("Configured special database settings for PythonAnywhere")
+
 def create_app(config_class=None):
     """Create and configure the Flask application"""
     app = Flask(__name__)
@@ -67,6 +88,9 @@ def create_app(config_class=None):
         app.config.from_object(get_config())
     else:
         app.config.from_object(config_class)
+    
+    # Configure database for the environment
+    configure_database(app)
     
     # Initialize extensions
     db.init_app(app)

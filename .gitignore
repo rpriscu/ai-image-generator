@@ -56,4 +56,31 @@ Thumbs.db
 .idea/
 .vscode/
 *.swp
-*.swo 
+*.swo
+
+# Flask-Migrate files
+migrations/versions/
+
+# Temporary files
+tmp/
+app/static/temp/
+
+# Uploaded files
+uploads/
+
+# macOS specific files
+.AppleDouble
+.LSOverride
+Icon
+
+# PythonAnywhere specific
+.pythonapp
+.python_history
+.bash_history
+
+# Personal notes
+NOTES.md
+TODO.md
+
+# Development database
+dev.db 

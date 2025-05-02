@@ -17,7 +17,7 @@ class Config:
     MAX_CONTENT_LENGTH = 16 * 1024 * 1024  # 16MB max file size
     
     # FAL AI settings
-    FAL_API_KEY = os.environ.get('FAL_API_KEY')
+    FAL_KEY = os.environ.get('FAL_KEY')
     FAL_API_BASE_URL = os.environ.get('FAL_API_BASE_URL', 'https://fal.run')
     
     # Google OAuth settings
@@ -29,6 +29,18 @@ class Config:
     # Admin credentials - used for initial setup only
     ADMIN_USERNAME = os.environ.get('ADMIN_USERNAME')
     ADMIN_PASSWORD = os.environ.get('ADMIN_PASSWORD')
+    
+    # Deployment settings
+    IS_PYTHONANYWHERE = 'PYTHONANYWHERE_SITE' in os.environ
+    SERVER_NAME = os.environ.get('SERVER_NAME')
+    
+    @staticmethod
+    def get_host_url():
+        """Get the host URL based on environment"""
+        if Config.IS_PYTHONANYWHERE:
+            return f"https://{os.environ.get('PYTHONANYWHERE_DOMAIN', 'rpriscu.pythonanywhere.com')}"
+        else:
+            return "http://localhost:8080"
 
 class DevelopmentConfig(Config):
     """Development configuration"""
@@ -52,6 +64,10 @@ class ProductionConfig(Config):
     SECRET_KEY = os.environ.get('SECRET_KEY')
     # Enforce having a database URL in production
     SQLALCHEMY_DATABASE_URI = os.environ.get('DATABASE_URL')
+    # Set higher security headers for production
+    REMEMBER_COOKIE_SECURE = True
+    SESSION_COOKIE_SECURE = True
+    SESSION_COOKIE_HTTPONLY = True
 
 # Configuration dictionary
 config = {
@@ -63,5 +79,9 @@ config = {
 
 def get_config():
     """Get the current configuration based on FLASK_ENV environment variable"""
-    config_name = os.environ.get('FLASK_ENV', 'default')
+    # Check if running on PythonAnywhere
+    if Config.IS_PYTHONANYWHERE:
+        config_name = 'production'
+    else:
+        config_name = os.environ.get('FLASK_ENV', 'default')
     return config[config_name] 

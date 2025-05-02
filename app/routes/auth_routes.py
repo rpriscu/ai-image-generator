@@ -26,9 +26,11 @@ def login():
 @auth_bp.route('/google-login')
 def google_login():
     """Initiate Google OAuth login"""
-    # Build the callback URL with http://localhost:8080 as base
-    # This must match exactly what's configured in Google Developer Console
-    callback_url = "http://localhost:8080/auth/google-callback"
+    # Build the callback URL dynamically based on the request host
+    callback_url = url_for('auth.google_callback', _external=True)
+    
+    # Log the callback URL for debugging
+    current_app.logger.info(f"Using callback URL: {callback_url}")
     
     # Get the authorization URL
     auth_url = google_auth_service.get_authorization_url(callback_url)
@@ -48,8 +50,12 @@ def google_login():
 def google_callback():
     """Handle the Google OAuth callback"""
     try:
-        # Get the callback URL from session or use the hardcoded one
-        callback_url = session.get('oauth_callback_url', "http://localhost:8080/auth/google-callback")
+        # Get the callback URL from session or generate it again
+        callback_url = session.get('oauth_callback_url')
+        
+        # If not in session, generate it dynamically
+        if not callback_url:
+            callback_url = url_for('auth.google_callback', _external=True)
         
         # Log for debugging
         current_app.logger.info(f"Handling Google callback with URL: {callback_url}")
@@ -122,10 +128,6 @@ def admin_logout():
 def debug():
     """Debug page for OAuth setup"""
     callback_url = url_for('auth.google_callback', _external=True)
-    hardcoded_callback = "http://localhost:8080/auth/google-callback"
-    client_id = current_app.config.get('GOOGLE_CLIENT_ID', 'Not set')
-    client_secret_set = 'Set' if current_app.config.get('GOOGLE_CLIENT_SECRET') else 'Not set'
-    allowed_domain = current_app.config.get('ALLOWED_EMAIL_DOMAIN', 'Not set')
     
     # Check if environment variables are set
     env_client_id = os.environ.get('GOOGLE_CLIENT_ID', 'Not set')
@@ -133,12 +135,11 @@ def debug():
     
     debug_info = {
         'dynamic_callback_url': callback_url,
-        'hardcoded_callback_url': hardcoded_callback,
-        'config_client_id': client_id,
-        'config_client_secret': client_secret_set,
+        'config_client_id': current_app.config.get('GOOGLE_CLIENT_ID', 'Not set'),
+        'config_client_secret': 'Set' if current_app.config.get('GOOGLE_CLIENT_SECRET') else 'Not set',
         'env_client_id': env_client_id,
         'env_client_secret': env_client_secret,
-        'allowed_domain': allowed_domain,
+        'allowed_domain': current_app.config.get('ALLOWED_EMAIL_DOMAIN', 'Not set'),
         'server_name': request.host,
         'scheme': request.scheme
     }
@@ -150,7 +151,7 @@ def debug():
         <li>Select your project</li>
         <li>Go to Credentials -> OAuth 2.0 Client IDs</li>
         <li>Edit your Web client</li>
-        <li>Add exactly this URI as an Authorized redirect URI: <code>{hardcoded_callback}</code></li>
+        <li>Add exactly this URI as an Authorized redirect URI: <code>{callback_url}</code></li>
         <li>Make sure your .env file has the GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET set</li>
     </ol>
     """

@@ -36,7 +36,7 @@ cp docs/development.env .env
 - `DATABASE_URL`: Database connection string
 
 ### FAL AI API Configuration
-- `FAL_API_KEY`: Your API key from fal.ai
+- `FAL_KEY`: Your API key from fal.ai
 - `FAL_API_BASE_URL`: Base URL for FAL API requests
 
 ### Google OAuth Configuration

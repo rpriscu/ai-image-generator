@@ -32,15 +32,15 @@ A Flask-based web application that generates AI images using fal.ai's API. The a
 ## Prerequisites
 
 - Python 3.11+
-- PostgreSQL database
+- PostgreSQL or MySQL database
 - fal.ai API key
 - Google OAuth 2.0 credentials
 
-## Setup
+## Local Setup
 
 1. Clone the repository:
 ```bash
-git clone git@github.com:rpriscu/ai-image-generator.git
+git clone https://github.com/rpriscu/ai-image-generator.git
 cd ai-image-generator
 ```
 
@@ -65,7 +65,7 @@ FLASK_ENV=development  # Change to 'production' for production
 DATABASE_URL=postgresql://username:password@localhost/dbname
 
 # fal.ai API configuration
-FAL_API_KEY=your_fal_api_key_here
+FAL_KEY=your_fal_api_key_here
 
 # Google OAuth configuration
 GOOGLE_CLIENT_ID=your_google_client_id
@@ -78,9 +78,11 @@ ADMIN_PASSWORD=secure_password_here
 
 5. Initialize the database:
 ```bash
-flask db init
-flask db migrate -m "Initial migration"
-flask db upgrade
+# Create database tables
+python setup_db.py --init
+
+# Create admin user
+python setup_db.py --create-admin
 ```
 
 6. Run the application:
@@ -90,37 +92,46 @@ python run.py
 
 The application will be available at `http://localhost:8080`
 
+## Environment Variables
+
+| Variable | Description | Required | Default |
+|----------|-------------|----------|---------|
+| `SECRET_KEY` | Flask secret key for session encryption | Yes (in production) | dev-key-change-in-production |
+| `FLASK_ENV` | Environment (development/production) | No | development |
+| `DATABASE_URL` | Database connection URL | Yes | sqlite:///dev.db (in development) |
+| `FAL_KEY` | fal.ai API key | Yes | None |
+| `GOOGLE_CLIENT_ID` | Google OAuth client ID | Yes | None |
+| `GOOGLE_CLIENT_SECRET` | Google OAuth client secret | Yes | None |
+| `ALLOWED_EMAIL_DOMAIN` | Email domain for Google login | No | zemingo.com |
+| `ADMIN_USERNAME` | Initial admin username | Yes | None |
+| `ADMIN_PASSWORD` | Initial admin password | Yes | None |
+| `HOST` | Host to run development server on | No | 0.0.0.0 |
+| `PORT` | Port to run development server on | No | 8080 |
+| `PYTHONANYWHERE_DOMAIN` | Domain for PythonAnywhere | No | rpriscu.pythonanywhere.com |
+
 ## Deploying to PythonAnywhere
 
-1. Create a PythonAnywhere account and a new web app
+For detailed deployment instructions, please see the [Deployment Guide](deployment_guide.md).
 
-2. Clone this repository to your PythonAnywhere account
+Quick steps:
 
-3. Set up a PostgreSQL database on PythonAnywhere or use an external database service
+1. Clone the repository on PythonAnywhere
+2. Set up a virtual environment and install dependencies
+3. Configure the web app settings in PythonAnywhere
+4. Set up the database
+5. Update the WSGI file
+6. Reload the web app
 
-4. Create a virtual environment and install the dependencies:
-```bash
-mkvirtualenv --python=/usr/bin/python3.11 ai-image-generator
-pip install -r requirements.txt
-pip install gunicorn
-```
+## Database Management
 
-5. Create a `.env` file in the project root with your configuration (similar to the local setup)
+The application comes with a database management utility (`setup_db.py`) that can perform the following operations:
 
-6. Set up the WSGI configuration file to point to your application, using `app` from `run.py`
+- Initialize database tables: `python setup_db.py --init`
+- Create admin user: `python setup_db.py --create-admin`
+- List all users: `python setup_db.py --list-users`
+- Reset database (drop all tables and recreate): `python setup_db.py --drop --init`
 
-7. Update the static files URL configuration in PythonAnywhere web app settings
-
-8. Initialize the database:
-```bash
-flask db init
-flask db migrate -m "Initial migration"
-flask db upgrade
-```
-
-9. Reload the web app
-
-For more detailed instructions on deploying to PythonAnywhere, refer to the [pythonanywhere_setup.md](pythonanywhere_setup.md) file.
+For help on available commands, run: `python setup_db.py`
 
 ## Project Structure
 
@@ -138,16 +149,16 @@ ai-image-generator/
 │   │   ├── google_auth.py    # Google OAuth service
 │   │   └── usage_tracker.py  # Usage tracking service
 │   ├── templates/            # Jinja2 templates
-│   │   ├── admin/            # Admin panel templates
-│   │   ├── auth/             # Authentication templates
-│   │   └── user/             # User-facing templates
 │   ├── static/               # Static assets
 │   └── utils/                # Utility modules
-│       └── security.py       # Security utilities
+│       ├── db_config.py      # Database configuration utilities
+│       └── cleanup.py        # Cleanup utilities
 ├── migrations/               # Database migrations
 ├── config.py                 # Application configuration
+├── deployment_guide.md       # PythonAnywhere deployment guide
 ├── requirements.txt          # Project dependencies
 ├── run.py                    # Application entry point
+├── setup_db.py               # Database setup script
 └── README.md                 # Project documentation
 ```
 

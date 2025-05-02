@@ -22,7 +22,7 @@ class FalApiService:
     
     def init_app(self, app):
         """Initialize the service with Flask app config"""
-        self.api_key = app.config.get('FAL_API_KEY')
+        self.api_key = app.config.get('FAL_KEY')
         self.base_url = app.config.get('FAL_API_BASE_URL', 'https://fal.run')
     
     def generate_image(self, prompt, model, image_file=None):
@@ -38,7 +38,7 @@ class FalApiService:
             dict: The generated image data
         """
         if not self.api_key:
-            self.api_key = current_app.config.get('FAL_API_KEY')
+            self.api_key = current_app.config.get('FAL_KEY')
             self.base_url = current_app.config.get('FAL_API_BASE_URL', 'https://fal.run')
         
         # Check which API method to use based on model configuration

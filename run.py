@@ -49,13 +49,14 @@ with app.app_context():
     
     # Register cleanup function for temp directory
     def cleanup_temp_dir():
+        """Clean up temporary files on application exit"""
         try:
-            if os.path.exists(temp_dir):
-                shutil.rmtree(temp_dir)
-                os.makedirs(temp_dir, exist_ok=True)
-                logging.info(f"Cleaned up temporary directory: {temp_dir}")
+            # Don't delete the directory itself, just clean old files
+            from app.utils.cleanup import clean_temp_files
+            clean_temp_files(temp_dir=temp_dir, max_age_hours=2)  # Clean files older than 2 hours
+            app.logger.info(f"Cleaned up temporary directory: {temp_dir}")
         except Exception as e:
-            logging.error(f"Error cleaning up temp directory: {str(e)}")
+            app.logger.error(f"Error cleaning up temp directory: {str(e)}")
     
     # Register cleanup function to run on application exit
     atexit.register(cleanup_temp_dir)
@@ -71,10 +72,19 @@ def make_shell_context():
     }
 
 if __name__ == '__main__':
-    # Get configuration from environment or use defaults
-    host = os.environ.get('HOST', '0.0.0.0')
-    port = int(os.environ.get('PORT', 8080))
-    debug = os.environ.get('FLASK_ENV', 'development') == 'development'
+    # Determine if running on PythonAnywhere
+    is_pythonanywhere = 'PYTHONANYWHERE_SITE' in os.environ
     
-    # Run the application
-    app.run(host=host, port=port, debug=debug) 
+    if is_pythonanywhere:
+        # When running on PythonAnywhere, don't start the development server
+        # The WSGI server will handle the requests
+        app.logger.info('Running on PythonAnywhere - no need to start development server')
+    else:
+        # Get configuration from environment or use defaults
+        host = os.environ.get('HOST', '0.0.0.0')
+        port = int(os.environ.get('PORT', 8080))
+        debug = os.environ.get('FLASK_ENV', 'development') == 'development'
+        
+        # Run the application with the development server
+        app.logger.info(f'Starting development server on {host}:{port}')
+        app.run(host=host, port=port, debug=debug) 
