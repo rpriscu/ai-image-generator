@@ -47,6 +47,10 @@ def register_context_processors(app):
 
 def create_default_admin(app):
     """Create default admin user if none exists"""
+    # Skip admin creation if flag is set (for database setup)
+    if app.config.get('SKIP_ADMIN_CREATION'):
+        return
+        
     with app.app_context():
         if Admin.query.count() == 0 and app.config.get('ADMIN_USERNAME') and app.config.get('ADMIN_PASSWORD'):
             Admin.create_admin(
