@@ -29,7 +29,7 @@ class FixedFileSystemSessionInterface(FileSystemSessionInterface):
         sid = request.cookies.get(app.config['SESSION_COOKIE_NAME'])
         
         if not sid:
-            return self.session_class({}, sid=str(uuid4()), new=True)
+            return self.session_class({}, sid=str(uuid4()))
             
         # Handle case where sid might be bytes
         if isinstance(sid, bytes):
@@ -52,7 +52,7 @@ class FixedFileSystemSessionInterface(FileSystemSessionInterface):
             return self.session_class(data, sid=sid)
         except Exception as e:
             app.logger.error(f"Error loading session: {e}")
-            return self.session_class({}, sid=str(uuid4()), new=True)
+            return self.session_class({}, sid=str(uuid4()))
             
     def save_session(self, app, session, response):
         """
