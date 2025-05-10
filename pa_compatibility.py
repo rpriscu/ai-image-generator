@@ -18,7 +18,7 @@ PA_PACKAGES = {
     'itsdangerous': '2.0.1',
     'jinja2': '3.0.3',
     'Flask-SQLAlchemy': '2.5.1',
-    'SQLAlchemy': '1.4.46',  # Add specific version for SQLAlchemy
+    'SQLAlchemy': '1.4.46',
     'sqlalchemy-utils': '0.38.3',
 }
 
@@ -27,132 +27,115 @@ PA_COMPATIBLE_SESSION_FIX = """
 Flask-Session compatibility module for Python 3.9 on PythonAnywhere.
 A simpler version for Python 3.9 which doesn't need the complex patching.
 \"\"\"
-from flask.sessions import SessionInterface
-from flask_session.sessions import FileSystemSessionInterface
+import os
+import pickle
+import datetime
+from flask.sessions import SessionInterface, SessionMixin
+from werkzeug.datastructures import CallbackDict
 
-class FixedFileSystemSessionInterface(FileSystemSessionInterface):
-    \"\"\"
-    Fixed version of FileSystemSessionInterface for Python 3.9 on PythonAnywhere
-    \"\"\"
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        # Ensure key_prefix is a string
-        if self.key_prefix is None or isinstance(self.key_prefix, bool):
-            self.key_prefix = "session:"
-    
+class SimpleSession(CallbackDict, SessionMixin):
+    \"\"\"Simple dictionary session implementation.\"\"\"
+    def __init__(self, initial=None, sid=None):
+        def on_update(self):
+            self.modified = True
+        CallbackDict.__init__(self, initial, on_update)
+        self.sid = sid
+        self.permanent = True
+        self.modified = False
+
+class SimpleFileSystemSession:
+    \"\"\"Simple filesystem session implementation.\"\"\"
+
+    def __init__(self, path):
+        self.path = path
+        try:
+            os.makedirs(self.path)
+        except OSError:
+            pass
+
+    def open_session(self, sid):
+        filename = os.path.join(self.path, sid)
+        if not os.path.exists(filename):
+            return None
+        try:
+            with open(filename, 'rb') as f:
+                return pickle.load(f)
+        except:
+            return None
+
+    def save_session(self, sid, session_data):
+        filename = os.path.join(self.path, sid)
+        with open(filename, 'wb') as f:
+            pickle.dump(session_data, f)
+
+class SimpleSessionInterface(SessionInterface):
+    \"\"\"Simple session interface implementation.\"\"\"
+
+    def __init__(self, session_file_dir):
+        self.session_file_dir = session_file_dir or os.path.join(os.getcwd(), 'flask_session')
+        self.session_store = SimpleFileSystemSession(self.session_file_dir)
+
     def open_session(self, app, request):
-        # Fix for Flask-Session on PythonAnywhere
-        if not hasattr(app, 'session_cookie_name'):
-            app.session_cookie_name = app.config.get('SESSION_COOKIE_NAME', 'session')
-        
-        return super().open_session(app, request)
-    
+        sid = request.cookies.get(app.config.get('SESSION_COOKIE_NAME', 'session'))
+        if not sid:
+            import uuid
+            sid = str(uuid.uuid4())
+            return SimpleSession(sid=sid)
+        session_data = self.session_store.open_session(sid)
+        if session_data is None:
+            return SimpleSession(sid=sid)
+        return SimpleSession(session_data, sid=sid)
+
     def save_session(self, app, session, response):
-        \"\"\"
-        Override save_session to handle the bool + str error
-        \"\"\"
-        # Fix the bool + str error in save_session
-        if isinstance(self.key_prefix, bool):
-            self.key_prefix = "session:"
+        domain = self.get_cookie_domain(app)
+        path = self.get_cookie_path(app)
         
-        return super().save_session(app, session, response)
-
-# Original function from Flask-Session but with a bug fixed
-def fixed_save_session(self, app, session, response):
-    \"\"\"
-    A fixed version of the save_session method to handle boolean key_prefix
-    \"\"\"
-    domain = self.get_cookie_domain(app)
-    path = self.get_cookie_path(app)
-    
-    # Skip if no session changes
-    if not session.modified:
-        return
-    
-    # Delete the session from storage if it's empty
-    if not session:
+        if not session:
+            if session.modified:
+                # Remove session file if empty
+                try:
+                    filename = os.path.join(self.session_file_dir, session.sid)
+                    os.unlink(filename)
+                except OSError:
+                    pass
+                response.delete_cookie(
+                    app.config.get('SESSION_COOKIE_NAME', 'session'),
+                    domain=domain,
+                    path=path
+                )
+            return
+        
+        # Save session data
         if session.modified:
-            # Actually remove it from backing store if it was there
-            key_prefix = self.key_prefix
-            if isinstance(key_prefix, bool):
-                key_prefix = "session:"
-            
-            if hasattr(self, "cache") and hasattr(session, "sid"):
-                self.cache.delete(key_prefix + session.sid)
-            
-            response.delete_cookie(
-                app.session_cookie_name,
-                domain=domain,
-                path=path
-            )
-        return
-    
-    # Otherwise, save it to the store
-    httponly = self.get_cookie_httponly(app)
-    secure = self.get_cookie_secure(app)
-    expires = self.get_expiration_time(app, session)
-    
-    # Serialize
-    val = self.serializer.dumps(dict(session))
-    
-    # Store in backend
-    key_prefix = self.key_prefix
-    if isinstance(key_prefix, bool):
-        key_prefix = "session:"
-    
-    if hasattr(self, "cache") and hasattr(session, "sid"):
-        self.cache.set(key_prefix + session.sid, val, 
-                      int(app.permanent_session_lifetime.total_seconds()))
-    
-    # Set cookie
-    response.set_cookie(
-        app.session_cookie_name, 
-        session.sid,
-        expires=expires,
-        httponly=httponly,
-        domain=domain,
-        path=path,
-        secure=secure
-    )
-
-def monkey_patch_flask_session():
-    \"\"\"Monkey patch Flask-Session to fix bool + str issue\"\"\"
-    try:
-        from flask_session.sessions import FileSystemSessionInterface
+            self.session_store.save_session(session.sid, dict(session))
         
-        # Store the original function for safety
-        original_save_session = FileSystemSessionInterface.save_session
+        # Set cookie
+        httponly = self.get_cookie_httponly(app)
+        secure = self.get_cookie_secure(app)
+        expires = self.get_expiration_time(app, session)
         
-        # Apply our fixed version
-        FileSystemSessionInterface.save_session = fixed_save_session
-        
-        print("Successfully patched Flask-Session")
-        return True
-    except ImportError:
-        print("Failed to patch Flask-Session - module not found")
-        return False
+        response.set_cookie(
+            app.config.get('SESSION_COOKIE_NAME', 'session'),
+            session.sid,
+            expires=expires,
+            httponly=httponly,
+            domain=domain,
+            path=path,
+            secure=secure
+        )
 
 def configure_session_interface(app):
     \"\"\"
-    Apply the session interface fix for PythonAnywhere
+    Apply a simpler session interface for PythonAnywhere
     \"\"\"
-    # Patch Flask-Session first
-    monkey_patch_flask_session()
+    app.session_cookie_name = app.config.get('SESSION_COOKIE_NAME', 'session')
     
-    # Set the session cookie name if not already set
-    if not hasattr(app, 'session_cookie_name'):
-        app.session_cookie_name = app.config.get('SESSION_COOKIE_NAME', 'session')
-    
-    # Apply our fixed session interface
-    app.session_interface = FixedFileSystemSessionInterface(
-        app.config.get('SESSION_FILE_DIR'),
-        app.config.get('SESSION_FILE_THRESHOLD', 500),
-        app.config.get('SESSION_FILE_MODE', 0o600),
-        app.config.get('SESSION_USE_SIGNER', False),
-        app.config.get('SESSION_KEY_PREFIX', 'session:')
+    # Use our simple session interface instead
+    app.session_interface = SimpleSessionInterface(
+        app.config.get('SESSION_FILE_DIR')
     )
     
-    app.logger.info("Session compatibility module initialized for PythonAnywhere")
+    app.logger.info("Simple session compatibility module initialized for PythonAnywhere")
 """
 
 def reset_environment():
