@@ -34,17 +34,111 @@ class FixedFileSystemSessionInterface(FileSystemSessionInterface):
     \"\"\"
     Fixed version of FileSystemSessionInterface for Python 3.9 on PythonAnywhere
     \"\"\"
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # Ensure key_prefix is a string
+        if self.key_prefix is None or isinstance(self.key_prefix, bool):
+            self.key_prefix = "session:"
+    
     def open_session(self, app, request):
         # Fix for Flask-Session on PythonAnywhere
         if not hasattr(app, 'session_cookie_name'):
             app.session_cookie_name = app.config.get('SESSION_COOKIE_NAME', 'session')
         
         return super().open_session(app, request)
+    
+    def save_session(self, app, session, response):
+        \"\"\"
+        Override save_session to handle the bool + str error
+        \"\"\"
+        # Fix the bool + str error in save_session
+        if isinstance(self.key_prefix, bool):
+            self.key_prefix = "session:"
+        
+        return super().save_session(app, session, response)
+
+# Original function from Flask-Session but with a bug fixed
+def fixed_save_session(self, app, session, response):
+    \"\"\"
+    A fixed version of the save_session method to handle boolean key_prefix
+    \"\"\"
+    domain = self.get_cookie_domain(app)
+    path = self.get_cookie_path(app)
+    
+    # Skip if no session changes
+    if not session.modified:
+        return
+    
+    # Delete the session from storage if it's empty
+    if not session:
+        if session.modified:
+            # Actually remove it from backing store if it was there
+            key_prefix = self.key_prefix
+            if isinstance(key_prefix, bool):
+                key_prefix = "session:"
+            
+            if hasattr(self, "cache") and hasattr(session, "sid"):
+                self.cache.delete(key_prefix + session.sid)
+            
+            response.delete_cookie(
+                app.session_cookie_name,
+                domain=domain,
+                path=path
+            )
+        return
+    
+    # Otherwise, save it to the store
+    httponly = self.get_cookie_httponly(app)
+    secure = self.get_cookie_secure(app)
+    expires = self.get_expiration_time(app, session)
+    
+    # Serialize
+    val = self.serializer.dumps(dict(session))
+    
+    # Store in backend
+    key_prefix = self.key_prefix
+    if isinstance(key_prefix, bool):
+        key_prefix = "session:"
+    
+    if hasattr(self, "cache") and hasattr(session, "sid"):
+        self.cache.set(key_prefix + session.sid, val, 
+                      int(app.permanent_session_lifetime.total_seconds()))
+    
+    # Set cookie
+    response.set_cookie(
+        app.session_cookie_name, 
+        session.sid,
+        expires=expires,
+        httponly=httponly,
+        domain=domain,
+        path=path,
+        secure=secure
+    )
+
+def monkey_patch_flask_session():
+    \"\"\"Monkey patch Flask-Session to fix bool + str issue\"\"\"
+    try:
+        from flask_session.sessions import FileSystemSessionInterface
+        
+        # Store the original function for safety
+        original_save_session = FileSystemSessionInterface.save_session
+        
+        # Apply our fixed version
+        FileSystemSessionInterface.save_session = fixed_save_session
+        
+        print("Successfully patched Flask-Session")
+        return True
+    except ImportError:
+        print("Failed to patch Flask-Session - module not found")
+        return False
 
 def configure_session_interface(app):
     \"\"\"
     Apply the session interface fix for PythonAnywhere
     \"\"\"
+    # Patch Flask-Session first
+    monkey_patch_flask_session()
+    
     # Set the session cookie name if not already set
     if not hasattr(app, 'session_cookie_name'):
         app.session_cookie_name = app.config.get('SESSION_COOKIE_NAME', 'session')
