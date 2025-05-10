@@ -49,19 +49,6 @@ def register_context_processors(app):
     def inject_is_production():
         return {'is_production': 'PYTHONANYWHERE_SITE' in os.environ}
 
-def create_default_admin(app):
-    """Create default admin user if none exists"""
-    # Skip admin creation if flag is set (for database setup)
-    if app.config.get('SKIP_ADMIN_CREATION'):
-        return
-        
-    with app.app_context():
-        if Admin.query.count() == 0 and app.config.get('ADMIN_USERNAME') and app.config.get('ADMIN_PASSWORD'):
-            Admin.create_admin(
-                username=app.config.get('ADMIN_USERNAME'),
-                password=app.config.get('ADMIN_PASSWORD')
-            )
-
 def configure_database(app):
     """Configure database connection based on environment"""
     if 'PYTHONANYWHERE_SITE' in os.environ:
@@ -79,15 +66,25 @@ def configure_database(app):
             app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {'connect_args': engine_config['connect_args']}
             app.logger.info("Configured special database settings for PythonAnywhere")
 
+def create_default_admin(app):
+    """Create default admin user if none exists"""
+    # Skip admin creation if flag is set (for database setup)
+    if app.config.get('SKIP_ADMIN_CREATION'):
+        return
+        
+    with app.app_context():
+        if Admin.query.count() == 0 and app.config.get('ADMIN_USERNAME') and app.config.get('ADMIN_PASSWORD'):
+            Admin.create_admin(
+                username=app.config.get('ADMIN_USERNAME'),
+                password=app.config.get('ADMIN_PASSWORD')
+            )
+
 def create_app(config_class=None):
     """Create and configure the Flask application"""
     app = Flask(__name__)
     
     # Load configuration
-    if config_class is None:
-        app.config.from_object(get_config())
-    else:
-        app.config.from_object(config_class)
+    app.config.from_object(config_class if config_class else get_config())
     
     # Configure database for the environment
     configure_database(app)
@@ -96,8 +93,6 @@ def create_app(config_class=None):
     db.init_app(app)
     migrate.init_app(app, db)
     login_manager.init_app(app)
-    
-    # Configure Flask-Login
     login_manager.login_view = 'auth.login'
     login_manager.login_message = 'Please log in to access this page.'
     

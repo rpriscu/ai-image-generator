@@ -2,7 +2,6 @@
 Cleanup utilities for the application.
 """
 import os
-import shutil
 import logging
 from datetime import datetime, timedelta
 
@@ -19,14 +18,15 @@ def clean_temp_files(temp_dir=None, max_age_hours=24):
     Returns:
         int: Number of files deleted
     """
-    from app import create_app
-    
     try:
-        app = create_app()
-        
-        # If temp_dir not specified, use default from app
+        # If temp_dir not specified and we're within Flask context, use default
         if temp_dir is None:
-            temp_dir = os.path.join(app.root_path, 'static', 'temp')
+            from flask import current_app
+            if current_app:
+                temp_dir = os.path.join(current_app.root_path, 'static', 'temp')
+            else:
+                logger.error("No temp directory specified and not in Flask context")
+                return 0
         
         if not os.path.exists(temp_dir):
             logger.info(f"Temp directory does not exist: {temp_dir}")
@@ -34,11 +34,10 @@ def clean_temp_files(temp_dir=None, max_age_hours=24):
         
         # Calculate cutoff time
         cutoff_time = datetime.now() - timedelta(hours=max_age_hours)
-        
         files_deleted = 0
         
         # Walk through the temp directory
-        for root, dirs, files in os.walk(temp_dir):
+        for root, _, files in os.walk(temp_dir):
             for file in files:
                 file_path = os.path.join(root, file)
                 

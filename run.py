@@ -8,7 +8,6 @@ import os
 import logging
 from logging.handlers import RotatingFileHandler
 from app.services.fal_api import fal_api_service
-import shutil
 import atexit
 
 def setup_logging(app):
@@ -51,9 +50,9 @@ with app.app_context():
     def cleanup_temp_dir():
         """Clean up temporary files on application exit"""
         try:
-            # Don't delete the directory itself, just clean old files
+            # Clean old files using utility function
             from app.utils.cleanup import clean_temp_files
-            clean_temp_files(temp_dir=temp_dir, max_age_hours=2)  # Clean files older than 2 hours
+            clean_temp_files(temp_dir=temp_dir, max_age_hours=2)
             app.logger.info(f"Cleaned up temporary directory: {temp_dir}")
         except Exception as e:
             app.logger.error(f"Error cleaning up temp directory: {str(e)}")
