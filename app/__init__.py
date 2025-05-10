@@ -31,14 +31,6 @@ def register_blueprints(app):
     app.register_blueprint(admin_bp)
     app.register_blueprint(user_bp)
 
-def configure_session(app):
-    """Configure Flask-Session for server-side sessions"""
-    app.config['SESSION_TYPE'] = 'filesystem'
-    app.config['SESSION_PERMANENT'] = False
-    app.config['SESSION_USE_SIGNER'] = True
-    app.config['SESSION_FILE_DIR'] = os.path.join(os.getcwd(), 'flask_session')
-    Session(app)
-
 def register_context_processors(app):
     """Register Jinja2 context processors"""
     @app.context_processor
@@ -86,6 +78,12 @@ def create_app(config_class=None):
     # Load configuration
     app.config.from_object(config_class if config_class else get_config())
     
+    # Configure session settings but don't initialize yet
+    app.config['SESSION_TYPE'] = 'filesystem'
+    app.config['SESSION_PERMANENT'] = False
+    app.config['SESSION_USE_SIGNER'] = True
+    app.config['SESSION_FILE_DIR'] = os.path.join(os.getcwd(), 'flask_session')
+    
     # Configure database for the environment
     configure_database(app)
     
@@ -96,8 +94,15 @@ def create_app(config_class=None):
     login_manager.login_view = 'auth.login'
     login_manager.login_message = 'Please log in to access this page.'
     
-    # Configure session
-    configure_session(app)
+    # Import our session interface fix first
+    from app.utils.session_fix import configure_session_interface
+    
+    # Then initialize Flask-Session
+    from flask_session import Session
+    Session(app)
+    
+    # Now apply our custom session interface
+    configure_session_interface(app)
     
     # Register context processors
     register_context_processors(app)
