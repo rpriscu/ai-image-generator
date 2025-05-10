@@ -17,7 +17,9 @@ PA_PACKAGES = {
     'Flask-Session': '0.4.0',
     'itsdangerous': '2.0.1',
     'jinja2': '3.0.3',
-    'Flask-SQLAlchemy': '2.5.1',  # Add specific version for SQLAlchemy
+    'Flask-SQLAlchemy': '2.5.1',
+    'SQLAlchemy': '1.4.46',  # Add specific version for SQLAlchemy
+    'sqlalchemy-utils': '0.38.3',
 }
 
 PA_COMPATIBLE_SESSION_FIX = """
@@ -59,9 +61,26 @@ def configure_session_interface(app):
     app.logger.info("Session compatibility module initialized for PythonAnywhere")
 """
 
+def reset_environment():
+    """Clean up the environment by uninstalling problematic packages"""
+    print("Cleaning up environment before installing compatible versions...")
+    
+    try:
+        subprocess.check_call([
+            sys.executable, "-m", "pip", "uninstall", "-y", 
+            "Flask", "Flask-SQLAlchemy", "SQLAlchemy", "Flask-Session", 
+            "Werkzeug", "itsdangerous", "jinja2"
+        ])
+        print("Successfully removed existing packages")
+    except subprocess.CalledProcessError as e:
+        print(f"Error removing packages: {e}")
+
 def downgrade_packages():
     """Uninstall current packages and install specific versions that work well together"""
     print("Setting up compatible packages for PythonAnywhere...")
+    
+    # Clean up environment first
+    reset_environment()
     
     # Create requirements file with specific versions
     with open("pa_requirements.txt", "w") as f:
