@@ -10,13 +10,14 @@ import shutil
 import subprocess
 import sys
 
-# Packages that need to be downgraded for Python 3.9 on PythonAnywhere
+# Packages that need specific versions for PythonAnywhere
 PA_PACKAGES = {
-    'Flask': '2.2.3',
-    'Werkzeug': '2.2.3',
+    'Flask': '2.0.3',
+    'Werkzeug': '2.0.3',
     'Flask-Session': '0.4.0',
-    'itsdangerous': '2.1.2',
-    'jinja2': '3.1.2'
+    'itsdangerous': '2.0.1',
+    'jinja2': '3.0.3',
+    'Flask-SQLAlchemy': '2.5.1',  # Add specific version for SQLAlchemy
 }
 
 PA_COMPATIBLE_SESSION_FIX = """
@@ -59,30 +60,28 @@ def configure_session_interface(app):
 """
 
 def downgrade_packages():
-    """Downgrade packages to versions that work with Python 3.9 on PythonAnywhere"""
-    print("Downgrading packages for PythonAnywhere compatibility...")
+    """Uninstall current packages and install specific versions that work well together"""
+    print("Setting up compatible packages for PythonAnywhere...")
     
-    for package, version in PA_PACKAGES.items():
-        print(f"Downgrading {package} to version {version}...")
-        try:
-            subprocess.check_call([
-                sys.executable, "-m", "pip", "install", 
-                f"{package}=={version}", "--force-reinstall"
-            ])
-            print(f"Successfully downgraded {package} to version {version}")
-        except subprocess.CalledProcessError as e:
-            print(f"Error downgrading {package}: {e}")
+    # Create requirements file with specific versions
+    with open("pa_requirements.txt", "w") as f:
+        for package, version in PA_PACKAGES.items():
+            f.write(f"{package}=={version}\n")
     
-    # Update the requirements.txt file
+    # Install from the specific requirements file
     try:
-        update_requirements()
-    except Exception as e:
-        print(f"Error updating requirements.txt: {e}")
-    
-    print("\nAll packages have been downgraded for PythonAnywhere compatibility.")
+        subprocess.check_call([
+            sys.executable, "-m", "pip", "install", "-r", "pa_requirements.txt"
+        ])
+        print("Successfully installed compatible packages for PythonAnywhere")
+    except subprocess.CalledProcessError as e:
+        print(f"Error installing packages: {e}")
+        
+    # Update the main requirements.txt file
+    update_requirements()
 
 def update_requirements():
-    """Update requirements.txt with the downgraded package versions"""
+    """Update requirements.txt with the compatible package versions"""
     if os.path.exists("requirements.txt"):
         with open("requirements.txt", "r") as f:
             requirements = f.readlines()
