@@ -5,9 +5,10 @@ from app.services.usage_tracker import track_usage, usage_tracker
 from app.models.models import MonthlyUsage, Asset, AssetType, db
 import logging
 import os
-from datetime import datetime
+from datetime import datetime, timedelta
 import requests
 from urllib.parse import urlparse
+from flask_login import current_user
 
 user_bp = Blueprint('user', __name__)
 logger = logging.getLogger(__name__)
@@ -188,44 +189,62 @@ def generate():
         # Limit number of images to generate
         num_images = min(num_images, 4)  # Maximum 4 images
         
+        # Reduce to 2 images for Recraft to avoid Heroku timeouts
+        if 'recraft' in model_id.lower():
+            num_images = min(num_images, 2)
+            logger.info(f"Limiting to {num_images} images for Recraft model to prevent timeouts")
+        
         # Track generated images
         image_urls = []
+        errors = []
         
         # Generate the requested number of images
         for i in range(num_images):
             logger.info(f"Generating image {i+1}/{num_images}")
-            # Generate image using the selected model
-            result = fal_api_service.generate_image(
-                prompt=prompt,
-                model=model,
-                image_file=image_file if should_use_image else None,
-                mask_file=mask_file if model_id == 'flux_pro' else None  # Pass mask file for Flux.1 [pro] Fill
-            )
-            
-            if 'image_url' in result:
-                image_url = result['image_url']
-                image_urls.append(image_url)
-                logger.info(f"Successfully generated image: {image_url[:50]}...")
-                
-                # Save to database
-                asset = Asset(
-                    user_id=user_id,
-                    file_url=image_url,
-                    type=AssetType.image,
+            try:
+                # Generate image using the selected model
+                result = fal_api_service.generate_image(
                     prompt=prompt,
-                    model=model['name']
+                    model=model,
+                    image_file=image_file if should_use_image else None,
+                    mask_file=mask_file if model_id == 'flux_pro' else None  # Pass mask file for Flux.1 [pro] Fill
                 )
-                db.session.add(asset)
+                
+                if 'image_url' in result:
+                    image_url = result['image_url']
+                    image_urls.append(image_url)
+                    logger.info(f"Successfully generated image: {image_url[:50]}...")
+                    
+                    # Save to database
+                    asset = Asset(
+                        user_id=user_id,
+                        file_url=image_url,
+                        type=AssetType.image,
+                        prompt=prompt,
+                        model=model['name']
+                    )
+                    db.session.add(asset)
+            except requests.exceptions.Timeout:
+                logger.warning(f"Timeout occurred when generating image {i+1}/{num_images}")
+                errors.append(f"Image {i+1} generation timed out")
+            except Exception as e:
+                logger.exception(f"Error generating image {i+1}/{num_images}: {str(e)}")
+                errors.append(f"Image {i+1} failed: {str(e)}")
         
         # Commit all assets at once for better performance
         if image_urls:
             db.session.commit()
         
-        # If we couldn't generate any images, return an error
-        if not image_urls:
-            return jsonify({'error': 'Failed to generate any images'}), 500
+        # Return partial success if at least one image was generated
+        if image_urls:
+            response = {'image_urls': image_urls}
+            if errors:
+                response['warnings'] = errors
+                logger.warning(f"Returning partial success with warnings: {errors}")
+            return jsonify(response)
             
-        return jsonify({'image_urls': image_urls})
+        # If we couldn't generate any images, return an error with all the errors we collected
+        return jsonify({'error': 'Failed to generate any images', 'details': errors}), 500
 
     except Exception as e:
         logger.exception(f"Error generating images: {str(e)}")

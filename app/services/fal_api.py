@@ -679,11 +679,15 @@ class FalApiService:
             logger.info(f"Making request to: {self.base_url}/{model['endpoint']}")
             logger.debug(f"With payload: {json.dumps({k: v for k, v in payload.items() if k != 'image_url'}, indent=2)}")
             
+            # Set a longer timeout for Recraft models specifically
+            request_timeout = 120 if 'recraft' in model['endpoint'].lower() else 60
+            logger.info(f"Using timeout of {request_timeout} seconds for {model['endpoint']}")
+            
             response = requests.post(
                 f'{self.base_url}/{model["endpoint"]}',
                 headers=headers,
                 json=payload,
-                timeout=60  # Increased timeout for image processing
+                timeout=request_timeout  # Increased timeout for Recraft models
             )
             
             logger.info(f"Response status: {response.status_code}")
