@@ -15,7 +15,7 @@ PACKAGES_TO_DOWNGRADE = {
     'Flask': '2.3.3',
     'itsdangerous': '2.1.2',
     'jinja2': '3.1.2',
-    'Pillow': '9.0.1'  # Use an older version known to work with Python 3.13
+    'Pillow': '10.2.0'  # Updated to a version that works with Python 3.13
 }
 
 def downgrade_packages():
