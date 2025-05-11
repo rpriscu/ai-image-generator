@@ -13,7 +13,7 @@ from datetime import datetime
 print(f"Python version: {sys.version}")
 print(f"Initializing Flask application with Python {sys.version_info.major}.{sys.version_info.minor}")
 
-# Apply PostgreSQL dialect fix for Python 3.13 before importing SQLAlchemy
+# Apply fixes for Python 3.13
 if sys.version_info.major == 3 and sys.version_info.minor == 13:
     # Apply PostgreSQL dialect fix before importing SQLAlchemy-based models
     try:
@@ -23,6 +23,15 @@ if sys.version_info.major == 3 and sys.version_info.minor == 13:
         print("Successfully applied PostgreSQL dialect fix from app/__init__.py")
     except Exception as e:
         print(f"Error applying PostgreSQL dialect fix: {e}")
+    
+    # Apply Werkzeug cookie handling fix
+    try:
+        print("Applying Werkzeug cookie handling fix from app/__init__.py...")
+        from app.utils.werkzeug_fix import patch_werkzeug_cookie_functions
+        patch_werkzeug_cookie_functions()
+        print("Successfully applied Werkzeug cookie handling fix from app/__init__.py")
+    except Exception as e:
+        print(f"Error applying Werkzeug cookie fix: {e}")
 
 from app.models.models import db, User, Admin
 from config import get_config
