@@ -25,8 +25,19 @@ def init_database(drop_all=False):
     app = create_app()
     app.config['SKIP_ADMIN_CREATION'] = True
     
-    # Display database configuration
-    print(f"Using database: {app.config['SQLALCHEMY_DATABASE_URI']}")
+    # Display database configuration (mask password for security)
+    db_url = app.config['SQLALCHEMY_DATABASE_URI']
+    if db_url:
+        # Mask the password in the URL for display purposes
+        masked_url = db_url
+        if '@' in db_url:
+            credentials_part = db_url.split('@')[0]
+            if ':' in credentials_part:
+                username_part = credentials_part.split(':')[0]
+                masked_url = f"{username_part}:****@{db_url.split('@')[1]}"
+        print(f"Using database: {masked_url}")
+    else:
+        print("Warning: No database URL configured")
     
     with app.app_context():
         if drop_all:
@@ -77,7 +88,26 @@ def create_admin_user(username=None, password=None, force=False):
                 password=password
             )
             print(f"Admin user '{username}' created successfully!")
-            print(f"You can log in at: {app.config['SERVER_NAME'] or 'http://localhost:8080'}/auth/admin/login")
+            
+            # Determine login URL based on environment
+            login_url = None
+            is_heroku = 'DYNO' in os.environ
+            is_pythonanywhere = 'PYTHONANYWHERE_SITE' in os.environ
+            
+            if is_heroku:
+                heroku_app_name = os.environ.get('HEROKU_APP_NAME')
+                if heroku_app_name:
+                    login_url = f"https://{heroku_app_name}.herokuapp.com/auth/admin/login"
+            elif is_pythonanywhere:
+                pythonanywhere_domain = os.environ.get('PYTHONANYWHERE_DOMAIN')
+                if pythonanywhere_domain:
+                    login_url = f"https://{pythonanywhere_domain}/auth/admin/login"
+            
+            if not login_url:
+                server_name = app.config.get('SERVER_NAME')
+                login_url = f"{server_name or 'http://localhost:8080'}/auth/admin/login"
+                
+            print(f"You can log in at: {login_url}")
         except Exception as e:
             print(f"Error creating admin user: {str(e)}")
 

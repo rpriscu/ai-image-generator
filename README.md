@@ -31,7 +31,7 @@ A Flask-based web application that generates AI images using fal.ai's API. The a
 
 ## Prerequisites
 
-- Python 3.11+
+- Python 3.11+ (Python 3.13 supported)
 - PostgreSQL database
 - fal.ai API key
 - Google OAuth 2.0 credentials
@@ -108,10 +108,13 @@ The application will be available at `http://localhost:8080`
 | `HOST` | Host to run development server on | No | 0.0.0.0 |
 | `PORT` | Port to run development server on | No | 8080 |
 | `PYTHONANYWHERE_DOMAIN` | Domain for PythonAnywhere | No | rpriscu.pythonanywhere.com |
+| `HEROKU_APP_NAME` | Heroku app name for URL generation | Yes (on Heroku) | None |
 
-## Deploying to PythonAnywhere
+## Deployment
 
-For detailed deployment instructions, please see the [Deployment Guide](deployment_guide.md).
+### Deploying to PythonAnywhere
+
+For detailed PythonAnywhere deployment instructions, please see the [PythonAnywhere Deployment Guide](deployment_guide.md).
 
 Quick steps:
 
@@ -121,6 +124,29 @@ Quick steps:
 4. Set up the database
 5. Update the WSGI file
 6. Reload the web app
+
+### Deploying to Heroku
+
+For detailed Heroku deployment instructions, please see the [Heroku Deployment Guide](heroku_deployment_guide.md).
+
+Quick steps:
+
+1. Create a Heroku account and install the Heroku CLI
+2. Create a new Heroku app: `heroku create your-app-name`
+3. Set up environment variables
+4. Provision a PostgreSQL database: `heroku addons:create heroku-postgresql:mini`
+5. Deploy your application: `git push heroku main`
+6. Initialize the database: 
+   ```
+   heroku run python setup_db.py --init
+   heroku run python setup_db.py --create-admin
+   ```
+
+You can also deploy directly from GitHub:
+
+1. Push your code to GitHub
+2. Connect your GitHub repository in the Heroku dashboard
+3. Enable automatic deployments
 
 ## Database Management
 
@@ -154,8 +180,12 @@ ai-image-generator/
 │       ├── db_config.py      # Database configuration utilities
 │       └── cleanup.py        # Cleanup utilities
 ├── migrations/               # Database migrations
+├── .python-version           # Python version specification
+├── app.json                  # Heroku app definition
 ├── config.py                 # Application configuration
 ├── deployment_guide.md       # PythonAnywhere deployment guide
+├── heroku_deployment_guide.md # Heroku deployment guide
+├── Procfile                  # Heroku process file
 ├── requirements.txt          # Project dependencies
 ├── run.py                    # Application entry point
 ├── setup_db.py               # Database setup script

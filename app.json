@@ -1,0 +1,60 @@
+{
+  "name": "AI Image Generator",
+  "description": "An AI-powered image generation application using FAL.ai",
+  "repository": "https://github.com/your-username/ai-image-generator",
+  "keywords": ["python", "flask", "ai", "image-generation", "fal-ai"],
+  "env": {
+    "SECRET_KEY": {
+      "description": "A secret key for Flask sessions and security",
+      "generator": "secret"
+    },
+    "FLASK_ENV": {
+      "description": "Flask environment (development or production)",
+      "value": "production"
+    },
+    "FAL_KEY": {
+      "description": "Your FAL.ai API key",
+      "required": true
+    },
+    "ADMIN_USERNAME": {
+      "description": "Admin account username",
+      "value": "admin"
+    },
+    "ADMIN_PASSWORD": {
+      "description": "Admin account password (change this immediately)",
+      "value": "change-this-password",
+      "required": true
+    },
+    "ALLOWED_EMAIL_DOMAIN": {
+      "description": "Email domain for user authentication (if using Google OAuth)",
+      "value": "zemingo.com",
+      "required": false
+    },
+    "GOOGLE_CLIENT_ID": {
+      "description": "Google OAuth client ID (if using Google OAuth)",
+      "required": false
+    },
+    "GOOGLE_CLIENT_SECRET": {
+      "description": "Google OAuth client secret (if using Google OAuth)",
+      "required": false
+    },
+    "HEROKU_APP_NAME": {
+      "description": "Heroku app name for URL generation",
+      "required": true
+    }
+  },
+  "addons": [
+    {
+      "plan": "heroku-postgresql:mini"
+    }
+  ],
+  "buildpacks": [
+    {
+      "url": "heroku/python"
+    }
+  ],
+  "scripts": {
+    "postdeploy": "python setup_db.py --init && python setup_db.py --create-admin"
+  },
+  "success_url": "/auth/admin/login"
+} 

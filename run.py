@@ -9,28 +9,45 @@ import logging
 from logging.handlers import RotatingFileHandler
 from app.services.fal_api import fal_api_service
 import atexit
+import sys
 
 def setup_logging(app):
     """Configure application logging with rotating file handler"""
-    # Create logs directory if it doesn't exist
-    if not os.path.exists('logs'):
-        os.mkdir('logs')
-        
-    # Configure file handler
-    file_handler = RotatingFileHandler(
-        'logs/app.log',
-        maxBytes=10 * 1024 * 1024,  # 10 MB
-        backupCount=5
-    )
-    file_handler.setFormatter(logging.Formatter(
-        '%(asctime)s %(levelname)s: %(message)s [in %(pathname)s:%(lineno)d]'
-    ))
-    file_handler.setLevel(logging.INFO)
+    # Create logs directory if it doesn't exist and we're not on Heroku
+    is_heroku = 'DYNO' in os.environ
     
-    # Add handlers to app logger
-    app.logger.addHandler(file_handler)
-    app.logger.setLevel(logging.INFO)
-    app.logger.info('AI Image Generator startup')
+    # Configure logging differently for Heroku vs local/PythonAnywhere
+    if is_heroku:
+        # Heroku already logs to stdout/stderr, so we configure for that
+        # We'll still set up our formatter for consistency
+        stream_handler = logging.StreamHandler(sys.stdout)
+        stream_handler.setFormatter(logging.Formatter(
+            '%(asctime)s %(levelname)s: %(message)s [in %(pathname)s:%(lineno)d]'
+        ))
+        stream_handler.setLevel(logging.INFO)
+        app.logger.addHandler(stream_handler)
+        app.logger.setLevel(logging.INFO)
+        app.logger.info('AI Image Generator startup on Heroku')
+    else:
+        # For local or PythonAnywhere, use file-based logging
+        if not os.path.exists('logs'):
+            os.mkdir('logs')
+            
+        # Configure file handler
+        file_handler = RotatingFileHandler(
+            'logs/app.log',
+            maxBytes=10 * 1024 * 1024,  # 10 MB
+            backupCount=5
+        )
+        file_handler.setFormatter(logging.Formatter(
+            '%(asctime)s %(levelname)s: %(message)s [in %(pathname)s:%(lineno)d]'
+        ))
+        file_handler.setLevel(logging.INFO)
+        
+        # Add handlers to app logger
+        app.logger.addHandler(file_handler)
+        app.logger.setLevel(logging.INFO)
+        app.logger.info('AI Image Generator startup')
 
 # Create the application instance
 app = create_app()
@@ -71,13 +88,14 @@ def make_shell_context():
     }
 
 if __name__ == '__main__':
-    # Determine if running on PythonAnywhere
+    # Determine if running on a managed platform
     is_pythonanywhere = 'PYTHONANYWHERE_SITE' in os.environ
+    is_heroku = 'DYNO' in os.environ
     
-    if is_pythonanywhere:
-        # When running on PythonAnywhere, don't start the development server
+    if is_pythonanywhere or is_heroku:
+        # When running on a managed platform, don't start the development server
         # The WSGI server will handle the requests
-        app.logger.info('Running on PythonAnywhere - no need to start development server')
+        app.logger.info('Running on managed platform - no need to start development server')
     else:
         # Get configuration from environment or use defaults
         host = os.environ.get('HOST', '0.0.0.0')

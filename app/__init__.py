@@ -39,10 +39,17 @@ def register_context_processors(app):
     
     @app.context_processor
     def inject_is_production():
-        return {'is_production': 'PYTHONANYWHERE_SITE' in os.environ}
+        is_pythonanywhere = 'PYTHONANYWHERE_SITE' in os.environ
+        is_heroku = 'DYNO' in os.environ
+        return {
+            'is_production': is_pythonanywhere or is_heroku,
+            'is_pythonanywhere': is_pythonanywhere,
+            'is_heroku': is_heroku
+        }
 
 def configure_database(app):
     """Configure database connection based on environment"""
+    # Handle PythonAnywhere specific configuration
     if 'PYTHONANYWHERE_SITE' in os.environ:
         from app.utils.db_config import get_engine_url
         
@@ -57,6 +64,20 @@ def configure_database(app):
         if isinstance(engine_config, dict) and 'connect_args' in engine_config:
             app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {'connect_args': engine_config['connect_args']}
             app.logger.info("Configured special database settings for PythonAnywhere")
+    
+    # Handle Heroku specific configuration
+    elif 'DYNO' in os.environ:
+        app.logger.info("Detected Heroku environment")
+        
+        # Heroku PostgreSQL configuration is handled in config.py
+        # This is just for additional settings that might be needed
+        app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
+            'pool_size': 10,
+            'max_overflow': 2,
+            'pool_recycle': 300,
+            'pool_pre_ping': True
+        }
+        app.logger.info("Configured database pool settings for Heroku")
 
 def create_default_admin(app):
     """Create default admin user if none exists"""
@@ -78,11 +99,30 @@ def create_app(config_class=None):
     # Load configuration
     app.config.from_object(config_class if config_class else get_config())
     
-    # Configure session settings but don't initialize yet
+    # Configure session settings based on environment
+    # Default to filesystem sessions
     app.config['SESSION_TYPE'] = 'filesystem'
     app.config['SESSION_PERMANENT'] = False
     app.config['SESSION_USE_SIGNER'] = True
-    app.config['SESSION_FILE_DIR'] = os.path.join(os.getcwd(), 'flask_session')
+    
+    # Check for Redis URL (Heroku add-on)
+    redis_url = os.environ.get('REDIS_URL')
+    if redis_url and 'DYNO' in os.environ:
+        # Use Redis if available (better for Heroku)
+        app.config['SESSION_TYPE'] = 'redis'
+        app.config['SESSION_REDIS'] = redis_url
+        app.logger.info("Using Redis for session storage")
+    else:
+        # Use filesystem sessions, setting the path based on environment
+        if 'DYNO' in os.environ:
+            app.config['SESSION_FILE_DIR'] = '/tmp/flask_session'
+        else:
+            app.config['SESSION_FILE_DIR'] = os.path.join(os.getcwd(), 'flask_session')
+        
+        # Create session directory if it doesn't exist
+        if not os.path.exists(app.config['SESSION_FILE_DIR']):
+            os.makedirs(app.config['SESSION_FILE_DIR'], exist_ok=True)
+            app.logger.info(f"Created session directory: {app.config['SESSION_FILE_DIR']}")
     
     # Configure database for the environment
     configure_database(app)
@@ -107,6 +147,11 @@ def create_app(config_class=None):
     # Configure static files for PythonAnywhere
     from app.utils.static_files import configure_static_files
     configure_static_files(app)
+    
+    # Configure for Heroku if running on Heroku
+    if 'DYNO' in os.environ:
+        from heroku import configure_for_heroku
+        configure_for_heroku(app)
     
     # Register context processors
     register_context_processors(app)

@@ -9,8 +9,16 @@ class Config:
     # Flask settings
     SECRET_KEY = os.environ.get('SECRET_KEY') or 'dev-key-change-in-production'
     
-    # Database settings
-    SQLALCHEMY_DATABASE_URI = os.environ.get('DATABASE_URL')
+    # Database settings - Fix for Heroku postgres:// URLs
+    db_url = os.environ.get('DATABASE_URL')
+    if db_url:
+        # Heroku provides postgres:// URLs, but SQLAlchemy needs postgresql://
+        if db_url.startswith('postgres://'):
+            db_url = db_url.replace('postgres://', 'postgresql://', 1)
+        # Ensure we always have a valid URL format
+        if not (db_url.startswith('postgresql://') or db_url.startswith('sqlite:///')):
+            print("Warning: DATABASE_URL does not start with postgresql:// or sqlite:///")
+    SQLALCHEMY_DATABASE_URI = db_url
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     
     # File upload settings
@@ -32,6 +40,7 @@ class Config:
     
     # Deployment settings
     IS_PYTHONANYWHERE = 'PYTHONANYWHERE_SITE' in os.environ
+    IS_HEROKU = 'DYNO' in os.environ
     SERVER_NAME = os.environ.get('SERVER_NAME')
     
     @staticmethod
@@ -39,6 +48,8 @@ class Config:
         """Get the host URL based on environment"""
         if Config.IS_PYTHONANYWHERE:
             return f"https://{os.environ.get('PYTHONANYWHERE_DOMAIN', 'rpriscu.pythonanywhere.com')}"
+        elif Config.IS_HEROKU:
+            return f"https://{os.environ.get('HEROKU_APP_NAME', '')}.herokuapp.com"
         else:
             return "http://localhost:8080"
 
@@ -79,8 +90,8 @@ config = {
 
 def get_config():
     """Get the current configuration based on FLASK_ENV environment variable"""
-    # Check if running on PythonAnywhere
-    if Config.IS_PYTHONANYWHERE:
+    # Check if running on a production platform
+    if Config.IS_PYTHONANYWHERE or Config.IS_HEROKU:
         config_name = 'production'
     else:
         config_name = os.environ.get('FLASK_ENV', 'default')
