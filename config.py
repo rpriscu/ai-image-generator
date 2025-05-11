@@ -1,5 +1,6 @@
 import os
 from dotenv import load_dotenv
+import sys
 
 # Load environment variables from .env file
 load_dotenv()
@@ -15,9 +16,16 @@ class Config:
         # Heroku provides postgres:// URLs, but SQLAlchemy needs postgresql://
         if db_url.startswith('postgres://'):
             db_url = db_url.replace('postgres://', 'postgresql://', 1)
+            print(f"Converted DATABASE_URL from postgres:// to postgresql:// for SQLAlchemy compatibility")
         # Ensure we always have a valid URL format
         if not (db_url.startswith('postgresql://') or db_url.startswith('sqlite:///')):
             print("Warning: DATABASE_URL does not start with postgresql:// or sqlite:///")
+            print(f"DATABASE_URL starts with: {db_url[:10]}...")  # Print first 10 chars for debugging
+    else:
+        print("Warning: No DATABASE_URL environment variable found")
+        if 'DYNO' in os.environ:  # On Heroku
+            print("Running on Heroku without DATABASE_URL - this will cause problems!")
+    
     SQLALCHEMY_DATABASE_URI = db_url
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     
@@ -27,9 +35,17 @@ class Config:
         'max_overflow': 2,
         'pool_recycle': 300,
         'pool_pre_ping': True,
-        'connect_args': {},
-        'drivername': 'postgresql',  # Force dialect to be 'postgresql' not 'postgres'
+        # Don't set explicit drivername in engine options (let SQLAlchemy handle this)
+        'connect_args': {
+            'connect_timeout': 10  # 10 second connection timeout
+        },
     }
+    
+    # Handle some Python 3.13 specific compatibility issues
+    if sys.version_info.major == 3 and sys.version_info.minor >= 13:
+        print(f"Detected Python 3.13+ (actual: {sys.version}). Applying compatibility settings.")
+        # Setting these to explicitly use the postgresql:// dialect
+        os.environ['SQLALCHEMY_DATABASE_DIALECT'] = 'postgresql'
     
     # File upload settings
     MAX_CONTENT_LENGTH = 16 * 1024 * 1024  # 16MB max file size
@@ -85,6 +101,9 @@ class ProductionConfig(Config):
     SECRET_KEY = os.environ.get('SECRET_KEY')
     # Enforce having a database URL in production
     SQLALCHEMY_DATABASE_URI = os.environ.get('DATABASE_URL')
+    if not SQLALCHEMY_DATABASE_URI and 'DYNO' in os.environ:
+        print("CRITICAL ERROR: No DATABASE_URL found in production environment on Heroku!")
+        print("HINT: Run 'heroku addons:create heroku-postgresql:mini' to provision a database")
     # Set higher security headers for production
     REMEMBER_COOKIE_SECURE = True
     SESSION_COOKIE_SECURE = True
