@@ -37,18 +37,55 @@ def patched_save_session(self, app, session, response):
             app.logger.error(f"Unhandled TypeError in session handling: {error_msg}")
         raise
 
-# Apply the monkey patch
+# Get the original open_session from FlaskSessionInterface
+from flask_session.sessions import SessionInterface as FlaskSessionInterface
+original_open_session = FlaskSessionInterface.open_session
+
+def patched_open_session(self, app, request):
+    """
+    Patched version of open_session to handle missing 'session_cookie_name' attribute
+    in Flask objects when using Flask-Session 0.4.0 on Python 3.13
+    """
+    try:
+        # First check if session_cookie_name exists on the app
+        if not hasattr(app, 'session_cookie_name'):
+            # Set the default session cookie name
+            app.session_cookie_name = 'session'
+            if hasattr(app, 'logger'):
+                app.logger.debug("Added missing 'session_cookie_name' attribute to Flask app")
+        
+        # Now call the original method
+        return original_open_session(self, app, request)
+    except Exception as e:
+        if hasattr(app, 'logger'):
+            app.logger.error(f"Error in patched open_session: {e}")
+        # Return an empty session as fallback
+        return {}
+
+# Apply the monkey patches if not already applied
 if not hasattr(SessionInterface, '_patched_for_py313'):
     print(f"Applying SessionInterface.save_session patch for Python {sys.version_info.major}.{sys.version_info.minor}")
     SessionInterface.save_session = patched_save_session
     SessionInterface._patched_for_py313 = True
     print("Successfully applied SessionInterface.save_session patch")
 
+# Apply the patch for FlaskSessionInterface.open_session
+if not hasattr(FlaskSessionInterface, '_patched_for_py313'):
+    print(f"Applying FlaskSessionInterface.open_session patch for Python {sys.version_info.major}.{sys.version_info.minor}")
+    FlaskSessionInterface.open_session = patched_open_session
+    FlaskSessionInterface._patched_for_py313 = True
+    print("Successfully applied FlaskSessionInterface.open_session patch")
+
 def configure_session_interface(app):
     """
     Configure the session interface for the Flask app
     with the patched save_session method for Python 3.13 compatibility
     """
+    # Make sure the session_cookie_name is set
+    if not hasattr(app, 'session_cookie_name'):
+        app.session_cookie_name = 'session'
+        print("Added missing 'session_cookie_name' attribute to Flask app")
+    
     # Apply Flask-Session configuration
     print("Configuring Flask-Session...")
     
@@ -65,14 +102,20 @@ def configure_session_interface(app):
         print(f"Warning: Error initializing Flask-Session: {e}")
         print("Attempting to continue...")
     
-    # Make sure our patch is applied
+    # Make sure our patches are applied
     if SessionInterface.save_session != patched_save_session:
-        print("Re-applying session_fix patch...")
+        print("Re-applying session_fix save_session patch...")
         SessionInterface.save_session = patched_save_session
         SessionInterface._patched_for_py313 = True
-        app.logger.info("Applied session_fix patch for Flask-Session compatibility with Python 3.13")
     else:
-        print("Session patch already applied correctly")
+        print("Session save_session patch already applied correctly")
+    
+    if FlaskSessionInterface.open_session != patched_open_session:
+        print("Re-applying session_fix open_session patch...")
+        FlaskSessionInterface.open_session = patched_open_session
+        FlaskSessionInterface._patched_for_py313 = True
+    else:
+        print("Session open_session patch already applied correctly")
     
     # Set a flag on the app to indicate our patch is applied
     app.config['SESSION_INTERFACE_PATCHED'] = True
