@@ -6,6 +6,15 @@ import os
 import sys
 import argparse
 from dotenv import load_dotenv
+
+# Apply PostgreSQL dialect fix for Python 3.13 before importing SQLAlchemy
+if sys.version_info.major == 3 and sys.version_info.minor == 13:
+    try:
+        from app.utils.db_fix import apply_postgres_dialect_fix
+        apply_postgres_dialect_fix()
+    except Exception as e:
+        print(f"Error applying PostgreSQL dialect fix: {e}")
+
 from app import create_app
 from app.models.models import db, Admin, User
 
