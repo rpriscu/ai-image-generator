@@ -23,150 +23,164 @@ def patch_werkzeug_cookie_functions():
         # Import werkzeug.http module
         try:
             from werkzeug import http as werkzeug_http
-        except ImportError:
-            print("Could not import werkzeug.http module")
+            from werkzeug.sansio import response as werkzeug_response
+        except ImportError as e:
+            print(f"Could not import werkzeug modules: {e}")
             return
         
-        # Check if dump_cookie exists
-        if not hasattr(werkzeug_http, 'dump_cookie'):
-            print("werkzeug.http.dump_cookie function not found")
-            return
-        
-        # Store original function
-        original_dump_cookie = werkzeug_http.dump_cookie
-        
-        # Create patched function
-        @functools.wraps(original_dump_cookie)
-        def patched_dump_cookie(key, value='', max_age=None, expires=None, path='/',
-                              domain=None, secure=False, httponly=False,
-                              charset='utf-8', sync_expires=False, max_size=4093,
-                              samesite=None):
-            """
-            Patched version of werkzeug.http.dump_cookie to ensure value is a string
-            when using a string pattern on it
-            """
-            try:
-                # Ensure value is a string if it's bytes
-                if isinstance(value, bytes):
-                    value = value.decode(charset)
-                
-                # Call original function with fixed value
-                return original_dump_cookie(
-                    key, value, max_age, expires, path, domain, secure,
-                    httponly, charset, sync_expires, max_size, samesite
-                )
-            except TypeError as e:
-                print(f"Warning in dump_cookie: {e}")
-                # If there's an error, try to convert all possible byte values to strings
-                if isinstance(key, bytes):
-                    key = key.decode(charset)
-                
-                # Call original function with converted values as fallback
-                return original_dump_cookie(
-                    key, str(value) if value is not None else '', 
-                    max_age, expires, path, domain, secure,
-                    httponly, charset, sync_expires, max_size, samesite
-                )
-            except Exception as e:
-                print(f"Unexpected error in patched_dump_cookie: {e}")
-                # As a last resort, return an empty cookie
-                return f"{key}=; Path={path}"
-        
-        # Apply patch
-        werkzeug_http.dump_cookie = patched_dump_cookie
-        print("Successfully patched werkzeug.http.dump_cookie")
-        
-        # Now also patch _cookie_quote function if it exists
-        if hasattr(werkzeug_http, '_cookie_quote'):
-            original_cookie_quote = werkzeug_http._cookie_quote
+        # First, patch the dump_cookie function in werkzeug.http
+        if hasattr(werkzeug_http, 'dump_cookie'):
+            original_dump_cookie = werkzeug_http.dump_cookie
             
-            @functools.wraps(original_cookie_quote)
-            def patched_cookie_quote(b):
-                """Ensure we have a proper string or bytes before quoting"""
+            @functools.wraps(original_dump_cookie)
+            def patched_dump_cookie(key, value='', max_age=None, expires=None, path='/',
+                                  domain=None, secure=False, httponly=False,
+                                  charset='utf-8', sync_expires=False, max_size=4093,
+                                  samesite=None):
+                """
+                Patched version of werkzeug.http.dump_cookie to ensure value is a string
+                when using a string pattern on it
+                """
                 try:
-                    # First try with original function
-                    return original_cookie_quote(b)
+                    # Ensure value is a string if it's bytes
+                    if isinstance(value, bytes):
+                        try:
+                            value = value.decode(charset)
+                            print(f"Converted cookie value from bytes to string: {value[:10]}...")
+                        except Exception as e:
+                            print(f"Error decoding cookie value: {e}")
+                            value = str(value)
+                    
+                    # Call original function with fixed value
+                    return original_dump_cookie(
+                        key, value, max_age, expires, path, domain, secure,
+                        httponly, charset, sync_expires, max_size, samesite
+                    )
                 except TypeError as e:
-                    # If bytes/string mismatch, convert appropriately and retry
-                    if isinstance(b, bytes):
-                        try:
-                            return original_cookie_quote(b.decode('utf-8'))
-                        except Exception:
-                            # If conversion fails, use str() as fallback
-                            return original_cookie_quote(str(b))
-                    elif isinstance(b, str):
-                        try:
-                            return original_cookie_quote(b.encode('utf-8'))
-                        except Exception:
-                            # If conversion fails, use str() as fallback
-                            return original_cookie_quote(str(b))
-                    # For other types, use str() as fallback
-                    return original_cookie_quote(str(b))
-                
+                    print(f"Warning in dump_cookie: {e}")
+                    # If there's an error, try to convert all possible byte values to strings
+                    if isinstance(key, bytes):
+                        key = key.decode(charset)
+                    
+                    # Call original function with converted values as fallback
+                    return original_dump_cookie(
+                        key, str(value) if value is not None else '', 
+                        max_age, expires, path, domain, secure,
+                        httponly, charset, sync_expires, max_size, samesite
+                    )
+                except Exception as e:
+                    print(f"Unexpected error in patched_dump_cookie: {e}")
+                    # As a last resort, return an empty cookie
+                    return f"{key}=; Path={path}"
+            
             # Apply patch
-            werkzeug_http._cookie_quote = patched_cookie_quote
-            print("Successfully patched werkzeug.http._cookie_quote")
+            werkzeug_http.dump_cookie = patched_dump_cookie
+            print("Successfully patched werkzeug.http.dump_cookie")
         
-        # Create a wrapper for the _cookie_no_quote_re.fullmatch function
-        # instead of trying to replace the actual method which is read-only
-        if hasattr(werkzeug_http, '_cookie_no_quote_re'):
-            # We can't replace the fullmatch method directly since it's read-only
-            # So instead create a custom wrapper function to handle the regexp matching
+        # Now patch the set_cookie method in werkzeug.sansio.response
+        if hasattr(werkzeug_response, 'Response') and hasattr(werkzeug_response.Response, 'set_cookie'):
+            original_set_cookie = werkzeug_response.Response.set_cookie
             
-            def safe_fullmatch(pattern, string):
-                """Safe wrapper around re.Pattern.fullmatch that handles string/bytes issues"""
+            @functools.wraps(original_set_cookie)
+            def patched_set_cookie(self, key, value="", max_age=None, expires=None, 
+                                  path="/", domain=None, secure=False, httponly=False, 
+                                  samesite=None):
+                """
+                Patched version of Response.set_cookie to handle bytes/string issues
+                """
                 try:
-                    # First try with original function
-                    return pattern.fullmatch(string)
-                except TypeError as e:
-                    # If we have a bytes pattern and string input or vice versa
-                    if isinstance(string, bytes):
-                        try:
-                            # Try to decode bytes to string
-                            return pattern.fullmatch(string.decode('utf-8'))
-                        except:
-                            # If conversion fails, return None (no match)
-                            return None
-                    elif isinstance(string, str):
-                        try:
-                            # Try to encode string to bytes
-                            return pattern.fullmatch(string.encode('utf-8'))
-                        except:
-                            # If conversion fails, return None (no match)
-                            return None
-                    else:
-                        # If not string or bytes, return None (no match)
-                        return None
+                    # Convert values to strings if they're bytes
+                    if isinstance(key, bytes):
+                        key = key.decode('utf-8')
+                    if isinstance(value, bytes):
+                        value = value.decode('utf-8')
+                    
+                    # Now call the original function with string values
+                    return original_set_cookie(
+                        self, key, value, max_age, expires, path, domain, secure, httponly, samesite
+                    )
+                except Exception as e:
+                    print(f"Error in patched set_cookie: {e}")
+                    # Fallback - if anything fails, still try to set the cookie
+                    return original_set_cookie(
+                        self, key, str(value) if value is not None else "", 
+                        max_age, expires, path, domain, secure, httponly, samesite
+                    )
             
-            # Now monkey patch functions that use _cookie_no_quote_re.fullmatch
-            
-            # First, try to find functions in werkzeug.http that might use the pattern
-            # The most likely candidate is _cookie_quote
-            if hasattr(werkzeug_http, '_cookie_quote') and not hasattr(werkzeug_http._cookie_quote, '_patched_regex'):
-                original_func = werkzeug_http._cookie_quote
-                pattern = werkzeug_http._cookie_no_quote_re
+            # Apply the patch
+            werkzeug_response.Response.set_cookie = patched_set_cookie
+            print("Successfully patched werkzeug.sansio.response.Response.set_cookie")
+        
+        # Now patch flask's response.set_cookie if possible
+        try:
+            from flask import Response as FlaskResponse
+            if hasattr(FlaskResponse, 'set_cookie'):
+                original_flask_set_cookie = FlaskResponse.set_cookie
                 
-                @functools.wraps(original_func)
-                def regex_safe_func(string):
-                    """Version of the function that uses our safe_fullmatch wrapper"""
-                    # If the original implementation uses pattern.fullmatch(string),
-                    # we replace that call with our safe version
-                    match = safe_fullmatch(pattern, string)
-                    if match:
-                        return string
-                    # Otherwise continue with original function
-                    return original_func(string)
-                
-                # Mark as patched to avoid double patching
-                regex_safe_func._patched_regex = True
+                @functools.wraps(original_flask_set_cookie)
+                def patched_flask_set_cookie(self, key, value="", max_age=None, expires=None, 
+                                           path="/", domain=None, secure=False, httponly=False, 
+                                           samesite=None):
+                    """
+                    Patched version of Flask Response.set_cookie to handle bytes/string issues
+                    """
+                    try:
+                        # Convert values to strings if they're bytes
+                        if isinstance(key, bytes):
+                            key = key.decode('utf-8')
+                        if isinstance(value, bytes):
+                            value = value.decode('utf-8')
+                        
+                        # Now call the original function with string values
+                        return original_flask_set_cookie(
+                            self, key, value, max_age, expires, path, domain, secure, httponly, samesite
+                        )
+                    except Exception as e:
+                        print(f"Error in patched Flask set_cookie: {e}")
+                        # Fallback - if anything fails, still try to set the cookie
+                        return original_flask_set_cookie(
+                            self, key, str(value) if value is not None else "", 
+                            max_age, expires, path, domain, secure, httponly, samesite
+                        )
                 
                 # Apply the patch
-                werkzeug_http._cookie_quote = regex_safe_func
-                print("Applied regex-safe patch to werkzeug.http._cookie_quote")
+                FlaskResponse.set_cookie = patched_flask_set_cookie
+                print("Successfully patched flask.Response.set_cookie")
             
-            print("Successfully handled _cookie_no_quote_re pattern matching")
+            # Also patch the session cookie handling in flask_session
+            from flask_session.sessions import SessionInterface
+            if hasattr(SessionInterface, 'save_session'):
+                original_session_save = SessionInterface.save_session
+                
+                @functools.wraps(original_session_save)
+                def patched_save_session(self, app, session, response):
+                    """
+                    Patched save_session to ensure session_id is a string before setting cookie
+                    """
+                    try:
+                        # Check if we need to convert session_id from bytes to string
+                        if hasattr(session, 'sid') and isinstance(session.sid, bytes):
+                            try:
+                                session.sid = session.sid.decode('utf-8')
+                                print(f"Converted session.sid from bytes to string")
+                            except:
+                                session.sid = str(session.sid)
+                        
+                        # Now call the original function
+                        return original_session_save(self, app, session, response)
+                    except Exception as e:
+                        print(f"Error in patched save_session: {e}")
+                        # Call original as fallback
+                        return original_session_save(self, app, session, response)
+                
+                # Apply patch
+                SessionInterface.save_session = patched_save_session
+                print("Successfully patched flask_session.sessions.SessionInterface.save_session")
+                
+        except ImportError as e:
+            print(f"Could not import Flask modules for additional patching: {e}")
         
-        print("All Werkzeug patches applied successfully")
+        print("All Werkzeug and Flask cookie patches applied successfully")
         return True
     except Exception as e:
         print(f"Error applying Werkzeug patches: {e}")
