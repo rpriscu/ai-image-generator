@@ -5,17 +5,22 @@ Creates and configures the Flask application.
 from flask import Flask
 from flask_migrate import Migrate
 from flask_login import LoginManager
-from flask_session import Session
 import os
 import sys
 from datetime import datetime
+
+# Print diagnostic info
+print(f"Python version: {sys.version}")
+print(f"Initializing Flask application with Python {sys.version_info.major}.{sys.version_info.minor}")
 
 # Apply PostgreSQL dialect fix for Python 3.13 before importing SQLAlchemy
 if sys.version_info.major == 3 and sys.version_info.minor == 13:
     # Apply PostgreSQL dialect fix before importing SQLAlchemy-based models
     try:
+        print("Applying PostgreSQL dialect fix from app/__init__.py...")
         from app.utils.db_fix import apply_postgres_dialect_fix
         apply_postgres_dialect_fix()
+        print("Successfully applied PostgreSQL dialect fix from app/__init__.py")
     except Exception as e:
         print(f"Error applying PostgreSQL dialect fix: {e}")
 
@@ -116,6 +121,7 @@ def create_default_admin(app):
 
 def create_app(config_class=None):
     """Create and configure the Flask application"""
+    print("Creating Flask application...")
     app = Flask(__name__)
     
     # Load configuration
@@ -133,23 +139,27 @@ def create_app(config_class=None):
         # Use Redis if available (better for Heroku)
         app.config['SESSION_TYPE'] = 'redis'
         app.config['SESSION_REDIS'] = redis_url
-        app.logger.info("Using Redis for session storage")
+        print("Using Redis for session storage")
     else:
         # Use filesystem sessions, setting the path based on environment
         if 'DYNO' in os.environ:
             app.config['SESSION_FILE_DIR'] = '/tmp/flask_session'
+            print(f"Using filesystem sessions with path: /tmp/flask_session")
         else:
             app.config['SESSION_FILE_DIR'] = os.path.join(os.getcwd(), 'flask_session')
+            print(f"Using filesystem sessions with path: {os.path.join(os.getcwd(), 'flask_session')}")
         
         # Create session directory if it doesn't exist
         if not os.path.exists(app.config['SESSION_FILE_DIR']):
             os.makedirs(app.config['SESSION_FILE_DIR'], exist_ok=True)
-            app.logger.info(f"Created session directory: {app.config['SESSION_FILE_DIR']}")
+            print(f"Created session directory: {app.config['SESSION_FILE_DIR']}")
     
     # Configure database for the environment
+    print("Configuring database...")
     configure_database(app)
     
     # Initialize extensions
+    print("Initializing extensions...")
     db.init_app(app)
     migrate.init_app(app, db)
     login_manager.init_app(app)
@@ -157,14 +167,14 @@ def create_app(config_class=None):
     login_manager.login_message = 'Please log in to access this page.'
     
     # Import our session interface fix first
+    print("Importing session interface fix...")
     from app.utils.session_fix import configure_session_interface
     
-    # Then initialize Flask-Session
-    from flask_session import Session
-    Session(app)
-    
-    # Now apply our custom session interface
+    # Initialize Flask-Session with our patched version
+    # Important: Do not import Session directly here, use configure_session_interface
+    print("Configuring session interface...")
     configure_session_interface(app)
+    print("Session interface configured")
     
     # Configure static files for PythonAnywhere
     from app.utils.static_files import configure_static_files
@@ -172,6 +182,7 @@ def create_app(config_class=None):
     
     # Configure for Heroku if running on Heroku
     if 'DYNO' in os.environ:
+        print("Configuring for Heroku...")
         from heroku import configure_for_heroku
         configure_for_heroku(app)
     
@@ -184,4 +195,5 @@ def create_app(config_class=None):
     # Create default admin user
     create_default_admin(app)
     
+    print("Flask application created successfully")
     return app 

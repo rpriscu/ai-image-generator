@@ -7,19 +7,32 @@ import sys
 import argparse
 from dotenv import load_dotenv
 
+# Print initial diagnostic info
+print("=" * 80)
+print(f"SETUP_DB.PY - Database initialization script")
+print(f"Python version: {sys.version}")
+print(f"Running on Heroku: {'Yes' if 'DYNO' in os.environ else 'No'}")
+print("=" * 80)
+
 # Apply PostgreSQL dialect fix for Python 3.13 before importing SQLAlchemy
 if sys.version_info.major == 3 and sys.version_info.minor == 13:
     try:
+        print("Applying PostgreSQL dialect fix for Python 3.13...")
         from app.utils.db_fix import apply_postgres_dialect_fix
         apply_postgres_dialect_fix()
+        print("Successfully applied PostgreSQL dialect fix")
     except Exception as e:
         print(f"Error applying PostgreSQL dialect fix: {e}")
 
+print("Importing Flask app and database models...")
 from app import create_app
 from app.models.models import db, Admin, User
+print("Successfully imported Flask app and database models")
 
 # Load environment variables
+print("Loading environment variables...")
 load_dotenv()
+print("Environment variables loaded")
 
 def init_database(drop_all=False):
     """
@@ -31,8 +44,10 @@ def init_database(drop_all=False):
     print("Setting up the database...")
     
     # Create application with initialization flag
+    print("Creating Flask application instance...")
     app = create_app()
     app.config['SKIP_ADMIN_CREATION'] = True
+    print("Flask application instance created")
     
     # Display database configuration (mask password for security)
     db_url = app.config['SQLALCHEMY_DATABASE_URI']
@@ -48,6 +63,7 @@ def init_database(drop_all=False):
     else:
         print("Warning: No database URL configured")
     
+    print("Creating application context...")
     with app.app_context():
         if drop_all:
             print("Dropping all tables...")
@@ -55,8 +71,13 @@ def init_database(drop_all=False):
             print("All tables dropped.")
         
         print("Creating tables...")
-        db.create_all()
-        print("Database tables created successfully!")
+        try:
+            db.create_all()
+            print("Database tables created successfully!")
+        except Exception as e:
+            print(f"ERROR creating database tables: {e}")
+            print(f"Error type: {type(e).__name__}")
+            raise
 
 def create_admin_user(username=None, password=None, force=False):
     """
@@ -68,8 +89,10 @@ def create_admin_user(username=None, password=None, force=False):
         force (bool): Whether to create a new admin even if one exists
     """
     # Create the application
+    print("Creating Flask application for admin user creation...")
     app = create_app()
     app.config['SKIP_ADMIN_CREATION'] = True
+    print("Flask application created")
     
     # Use environment variables if not provided
     if not username:
@@ -82,8 +105,10 @@ def create_admin_user(username=None, password=None, force=False):
         print("Either provide them as arguments or set ADMIN_USERNAME and ADMIN_PASSWORD environment variables.")
         return
     
+    print(f"Attempting to create admin user: {username}")
     with app.app_context():
         # Check if admin already exists
+        print("Checking if admin user already exists...")
         admin_exists = Admin.query.filter_by(username=username).first() is not None
         
         if admin_exists and not force:
@@ -92,6 +117,7 @@ def create_admin_user(username=None, password=None, force=False):
         
         # Create a new admin user
         try:
+            print("Creating admin user...")
             admin = Admin.create_admin(
                 username=username,
                 password=password
@@ -119,10 +145,13 @@ def create_admin_user(username=None, password=None, force=False):
             print(f"You can log in at: {login_url}")
         except Exception as e:
             print(f"Error creating admin user: {str(e)}")
+            print(f"Error type: {type(e).__name__}")
 
 def list_users():
     """List all users in the database"""
+    print("Creating Flask application for listing users...")
     app = create_app()
+    print("Flask application created")
     
     with app.app_context():
         print("Users in the database:")
@@ -153,7 +182,9 @@ if __name__ == "__main__":
     parser.add_argument('--force', action='store_true', help='Force creation of admin even if one exists')
     parser.add_argument('--list-users', action='store_true', help='List all users in the database')
     
+    print("Parsing command line arguments...")
     args = parser.parse_args()
+    print(f"Command line arguments: {args}")
     
     # If no args provided, show help
     if len(sys.argv) == 1:
@@ -162,10 +193,22 @@ if __name__ == "__main__":
     
     # Execute commands
     if args.init or args.drop:
-        init_database(drop_all=args.drop)
+        try:
+            print("Initializing database...")
+            init_database(drop_all=args.drop)
+            print("Database initialization complete")
+        except Exception as e:
+            print(f"Database initialization failed: {e}")
+            sys.exit(1)
     
     if args.create_admin:
+        print("Creating admin user...")
         create_admin_user(args.admin_username, args.admin_password, args.force)
     
     if args.list_users:
-        list_users() 
+        print("Listing users...")
+        list_users()
+    
+    print("=" * 80)
+    print("SETUP_DB.PY - Execution complete")
+    print("=" * 80) 
