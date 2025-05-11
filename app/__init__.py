@@ -7,7 +7,17 @@ from flask_migrate import Migrate
 from flask_login import LoginManager
 from flask_session import Session
 import os
+import sys
 from datetime import datetime
+
+# Apply PostgreSQL dialect fix for Python 3.13 before importing SQLAlchemy
+if sys.version_info.major == 3 and sys.version_info.minor == 13:
+    # Apply PostgreSQL dialect fix before importing SQLAlchemy-based models
+    try:
+        from app.utils.db_fix import apply_postgres_dialect_fix
+        apply_postgres_dialect_fix()
+    except Exception as e:
+        print(f"Error applying PostgreSQL dialect fix: {e}")
 
 from app.models.models import db, User, Admin
 from config import get_config
@@ -49,6 +59,12 @@ def register_context_processors(app):
 
 def configure_database(app):
     """Configure database connection based on environment"""
+    # Fix PostgreSQL database URL if needed
+    db_url = app.config.get('SQLALCHEMY_DATABASE_URI')
+    if db_url and db_url.startswith('postgres://'):
+        app.config['SQLALCHEMY_DATABASE_URI'] = db_url.replace('postgres://', 'postgresql://', 1)
+        app.logger.info("Fixed PostgreSQL database URL format")
+    
     # Handle PythonAnywhere specific configuration
     if 'PYTHONANYWHERE_SITE' in os.environ:
         from app.utils.db_config import get_engine_url
@@ -68,6 +84,12 @@ def configure_database(app):
     # Handle Heroku specific configuration
     elif 'DYNO' in os.environ:
         app.logger.info("Detected Heroku environment")
+        
+        # Ensure we're using the correct dialect
+        if sys.version_info.major == 3 and sys.version_info.minor == 13:
+            from app.utils.db_fix import apply_postgres_dialect_fix
+            apply_postgres_dialect_fix()
+            app.logger.info("Applied PostgreSQL dialect fix for Python 3.13")
         
         # Heroku PostgreSQL configuration is handled in config.py
         # This is just for additional settings that might be needed
