@@ -6,6 +6,7 @@ import sys
 import logging
 import importlib
 import functools
+import re
 
 logger = logging.getLogger(__name__)
 
@@ -106,28 +107,30 @@ def patch_werkzeug_cookie_functions():
             werkzeug_http._cookie_quote = patched_cookie_quote
             print("Successfully patched werkzeug.http._cookie_quote")
         
-        # Check if we also need to patch the _cookie_no_quote_re function
-        if hasattr(werkzeug_http, '_cookie_no_quote_re') and hasattr(werkzeug_http._cookie_no_quote_re, 'fullmatch'):
-            original_fullmatch = werkzeug_http._cookie_no_quote_re.fullmatch
+        # Create a wrapper for the _cookie_no_quote_re.fullmatch function
+        # instead of trying to replace the actual method which is read-only
+        if hasattr(werkzeug_http, '_cookie_no_quote_re'):
+            # We can't replace the fullmatch method directly since it's read-only
+            # So instead create a custom wrapper function to handle the regexp matching
             
-            def patched_fullmatch(string):
-                """Ensure we have a string before matching"""
+            def safe_fullmatch(pattern, string):
+                """Safe wrapper around re.Pattern.fullmatch that handles string/bytes issues"""
                 try:
                     # First try with original function
-                    return original_fullmatch(string)
+                    return pattern.fullmatch(string)
                 except TypeError as e:
                     # If we have a bytes pattern and string input or vice versa
                     if isinstance(string, bytes):
                         try:
                             # Try to decode bytes to string
-                            return original_fullmatch(string.decode('utf-8'))
+                            return pattern.fullmatch(string.decode('utf-8'))
                         except:
                             # If conversion fails, return None (no match)
                             return None
                     elif isinstance(string, str):
                         try:
                             # Try to encode string to bytes
-                            return original_fullmatch(string.encode('utf-8'))
+                            return pattern.fullmatch(string.encode('utf-8'))
                         except:
                             # If conversion fails, return None (no match)
                             return None
@@ -135,9 +138,33 @@ def patch_werkzeug_cookie_functions():
                         # If not string or bytes, return None (no match)
                         return None
             
-            # Apply patch
-            werkzeug_http._cookie_no_quote_re.fullmatch = patched_fullmatch
-            print("Successfully patched werkzeug.http._cookie_no_quote_re.fullmatch")
+            # Now monkey patch functions that use _cookie_no_quote_re.fullmatch
+            
+            # First, try to find functions in werkzeug.http that might use the pattern
+            # The most likely candidate is _cookie_quote
+            if hasattr(werkzeug_http, '_cookie_quote') and not hasattr(werkzeug_http._cookie_quote, '_patched_regex'):
+                original_func = werkzeug_http._cookie_quote
+                pattern = werkzeug_http._cookie_no_quote_re
+                
+                @functools.wraps(original_func)
+                def regex_safe_func(string):
+                    """Version of the function that uses our safe_fullmatch wrapper"""
+                    # If the original implementation uses pattern.fullmatch(string),
+                    # we replace that call with our safe version
+                    match = safe_fullmatch(pattern, string)
+                    if match:
+                        return string
+                    # Otherwise continue with original function
+                    return original_func(string)
+                
+                # Mark as patched to avoid double patching
+                regex_safe_func._patched_regex = True
+                
+                # Apply the patch
+                werkzeug_http._cookie_quote = regex_safe_func
+                print("Applied regex-safe patch to werkzeug.http._cookie_quote")
+            
+            print("Successfully handled _cookie_no_quote_re pattern matching")
         
         print("All Werkzeug patches applied successfully")
         return True
