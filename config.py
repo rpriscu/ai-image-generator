@@ -21,6 +21,16 @@ class Config:
     SQLALCHEMY_DATABASE_URI = db_url
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     
+    # SQLAlchemy engine options - explicit for Python 3.13 compatibility
+    SQLALCHEMY_ENGINE_OPTIONS = {
+        'pool_size': 10,
+        'max_overflow': 2,
+        'pool_recycle': 300,
+        'pool_pre_ping': True,
+        'connect_args': {},
+        'drivername': 'postgresql',  # Force dialect to be 'postgresql' not 'postgres'
+    }
+    
     # File upload settings
     MAX_CONTENT_LENGTH = 16 * 1024 * 1024  # 16MB max file size
     
