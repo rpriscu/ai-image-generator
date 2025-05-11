@@ -14,7 +14,8 @@ PACKAGES_TO_DOWNGRADE = {
     'Werkzeug': '2.3.7',
     'Flask': '2.3.3',
     'itsdangerous': '2.1.2',
-    'jinja2': '3.1.2'
+    'jinja2': '3.1.2',
+    'Pillow': '9.0.1'  # Use an older version known to work with Python 3.13
 }
 
 def downgrade_packages():
@@ -27,7 +28,7 @@ def downgrade_packages():
         try:
             subprocess.check_call([
                 sys.executable, "-m", "pip", "install", 
-                f"{package}=={version}", "--force-reinstall"
+                f"{package}=={version}", "--force-reinstall", "--no-build-isolation"
             ])
             print(f"Successfully downgraded {package} to version {version}")
         except subprocess.CalledProcessError as e:

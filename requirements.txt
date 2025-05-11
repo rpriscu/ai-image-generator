@@ -5,7 +5,7 @@ setuptools>=65.0.0
 Flask==2.3.3
 python-dotenv==1.0.1
 requests==2.31.0
-Pillow==10.2.0  # Updated for Python 3.13 compatibility
+Pillow==9.0.1  # Older version known to work with Python 3.13 on Heroku  # Updated for Python 3.13 compatibility
 Flask-SQLAlchemy==3.1.1
 Flask-Migrate==4.0.5
 Flask-Login==0.6.3
