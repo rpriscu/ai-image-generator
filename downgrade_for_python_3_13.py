@@ -15,7 +15,7 @@ PACKAGES_TO_DOWNGRADE = {
     'Flask': '2.3.3',
     'itsdangerous': '2.1.2',
     'jinja2': '3.1.2',
-    'Pillow': '10.2.0'  # Updated to a version that works with Python 3.13
+    'Pillow': '9.5.0'  # Version with available pre-built wheels
 }
 
 def downgrade_packages():
@@ -28,7 +28,8 @@ def downgrade_packages():
         try:
             subprocess.check_call([
                 sys.executable, "-m", "pip", "install", 
-                f"{package}=={version}", "--force-reinstall", "--no-build-isolation"
+                f"{package}=={version}", "--force-reinstall", "--no-build-isolation",
+                "--only-binary", ":all:" if package == "Pillow" else ":none:"
             ])
             print(f"Successfully downgraded {package} to version {version}")
         except subprocess.CalledProcessError as e:
@@ -48,9 +49,12 @@ def update_requirements():
         # Update the versions
         new_requirements = []
         for line in requirements:
-            package = line.split('==')[0].strip()
-            if package in PACKAGES_TO_DOWNGRADE:
-                new_requirements.append(f"{package}=={PACKAGES_TO_DOWNGRADE[package]}\n")
+            if line.strip() and not line.startswith('#') and not line.startswith('--'):
+                package = line.split('==')[0].strip()
+                if package in PACKAGES_TO_DOWNGRADE:
+                    new_requirements.append(f"{package}=={PACKAGES_TO_DOWNGRADE[package]}\n")
+                else:
+                    new_requirements.append(line)
             else:
                 new_requirements.append(line)
         
