@@ -7,6 +7,7 @@ import sys
 import argparse
 import sqlalchemy
 from dotenv import load_dotenv
+from werkzeug.security import generate_password_hash
 
 # Print initial diagnostic info
 print("=" * 80)
@@ -14,6 +15,11 @@ print(f"SETUP_DB.PY - Database initialization script")
 print(f"Python version: {sys.version}")
 print(f"Running on Heroku: {'Yes' if 'DYNO' in os.environ else 'No'}")
 print("=" * 80)
+
+# Load environment variables
+print("Loading environment variables...")
+load_dotenv()
+print("Environment variables loaded")
 
 # Apply PostgreSQL dialect fix for Python 3.13 before importing SQLAlchemy
 if sys.version_info.major == 3 and sys.version_info.minor == 13:
@@ -25,6 +31,12 @@ if sys.version_info.major == 3 and sys.version_info.minor == 13:
     except Exception as e:
         print(f"Error applying PostgreSQL dialect fix: {e}")
 
+# Handle any DATABASE_URL that starts with postgres:// 
+db_url = os.environ.get('DATABASE_URL', '')
+if db_url.startswith('postgres://'):
+    print("Converting postgres:// to postgresql:// in DATABASE_URL")
+    os.environ['DATABASE_URL'] = db_url.replace('postgres://', 'postgresql://', 1)
+
 print("Importing Flask app and database models...")
 try:
     from app import create_app
@@ -33,11 +45,6 @@ try:
 except Exception as e:
     print(f"Error importing Flask app and models: {e}")
     sys.exit(1)
-
-# Load environment variables
-print("Loading environment variables...")
-load_dotenv()
-print("Environment variables loaded")
 
 def init_database(drop_all=False):
     """
@@ -71,12 +78,23 @@ def init_database(drop_all=False):
     print("Creating application context...")
     with app.app_context():
         try:
+            # First verify the connection works
+            try:
+                db.engine.connect()
+                print("Database connection successful")
+            except Exception as e:
+                print(f"Error connecting to database: {e}")
+                return False
+                
             # Check if tables already exist
             try:
                 engine = db.engine
                 inspector = sqlalchemy.inspect(engine)
                 existing_tables = inspector.get_table_names()
                 print(f"Existing tables: {existing_tables}")
+                
+                if 'admin' not in existing_tables:
+                    print("Warning: Admin table does not exist - may need to run create_tables.py first")
             except Exception as e:
                 print(f"Could not inspect existing tables: {e}")
                 existing_tables = []
@@ -86,29 +104,24 @@ def init_database(drop_all=False):
                 db.drop_all()
                 print("All tables dropped.")
             
-            print("Creating tables...")
-            db.create_all()
-            print("Database tables created successfully!")
+            if not existing_tables:
+                print("Creating tables...")
+                db.create_all()
+                print("Database tables created successfully!")
+            else:
+                print("Tables already exist, skipping table creation")
             
             # List all tables that were created
             try:
                 inspector = sqlalchemy.inspect(engine)
                 tables_after = inspector.get_table_names()
-                print(f"Tables after creation: {tables_after}")
-                new_tables = set(tables_after) - set(existing_tables)
-                if new_tables:
-                    print(f"Newly created tables: {new_tables}")
-                else:
-                    print("No new tables were created")
+                print(f"Tables after setup: {tables_after}")
             except Exception as e:
                 print(f"Could not inspect tables after creation: {e}")
                 
         except Exception as e:
-            print(f"ERROR creating database tables: {e}")
+            print(f"ERROR during database setup: {e}")
             print(f"Error type: {type(e).__name__}")
-            
-            # Try to continue even if there was an error
-            print("Attempting to continue despite errors...")
             return False
     
     return True
@@ -130,68 +143,62 @@ def create_admin_user(username=None, password=None, force=False):
     
     # Use environment variables if not provided
     if not username:
-        username = app.config.get('ADMIN_USERNAME')
+        username = os.environ.get('ADMIN_USERNAME') or app.config.get('ADMIN_USERNAME')
     if not password:
-        password = app.config.get('ADMIN_PASSWORD')
+        password = os.environ.get('ADMIN_PASSWORD') or app.config.get('ADMIN_PASSWORD')
     
     if not username or not password:
         print("Error: Admin username and password are required.")
         print("Either provide them as arguments or set ADMIN_USERNAME and ADMIN_PASSWORD environment variables.")
-        return
+        return False
     
     print(f"Attempting to create admin user: {username}")
+    
     with app.app_context():
-        # Check if admin table exists and admin user exists
         try:
-            # First check if the table exists
+            # First check if the admin table exists
             engine = db.engine
             inspector = sqlalchemy.inspect(engine)
-            if 'admin' not in inspector.get_table_names():
-                print("Admin table does not exist yet. Creating it...")
-                db.create_all()  # Create tables if they don't exist
+            tables = inspector.get_table_names()
+            
+            if 'admin' not in tables:
+                print("Admin table does not exist. Attempting to create tables...")
+                db.create_all()
+                print("Created database tables")
             
             # Now check if admin already exists
             print("Checking if admin user already exists...")
-            admin_exists = Admin.query.filter_by(username=username).first() is not None
-            
-            if admin_exists and not force:
-                print(f"Admin user '{username}' already exists.")
-                return
+            try:
+                admin_exists = Admin.query.filter_by(username=username).first() is not None
+                
+                if admin_exists:
+                    if force:
+                        print(f"Admin user '{username}' already exists, but force flag is set. Creating anyway.")
+                    else:
+                        print(f"Admin user '{username}' already exists. Use --force to overwrite.")
+                        return True
+            except Exception as e:
+                print(f"Error checking for existing admin: {e}")
+                print("Assuming admin does not exist and continuing...")
+                admin_exists = False
             
             # Create a new admin user
             try:
                 print("Creating admin user...")
-                admin = Admin.create_admin(
-                    username=username,
-                    password=password
-                )
+                admin = Admin(username=username)
+                admin.set_password(password)
+                db.session.add(admin)
+                db.session.commit()
                 print(f"Admin user '{username}' created successfully!")
-                
-                # Determine login URL based on environment
-                login_url = None
-                is_heroku = 'DYNO' in os.environ
-                is_pythonanywhere = 'PYTHONANYWHERE_SITE' in os.environ
-                
-                if is_heroku:
-                    heroku_app_name = os.environ.get('HEROKU_APP_NAME')
-                    if heroku_app_name:
-                        login_url = f"https://{heroku_app_name}.herokuapp.com/auth/admin/login"
-                elif is_pythonanywhere:
-                    pythonanywhere_domain = os.environ.get('PYTHONANYWHERE_DOMAIN')
-                    if pythonanywhere_domain:
-                        login_url = f"https://{pythonanywhere_domain}/auth/admin/login"
-                
-                if not login_url:
-                    server_name = app.config.get('SERVER_NAME')
-                    login_url = f"{server_name or 'http://localhost:8080'}/auth/admin/login"
-                    
-                print(f"You can log in at: {login_url}")
+                return True
             except Exception as e:
                 print(f"Error creating admin user: {str(e)}")
-                print(f"Error type: {type(e).__name__}")
+                db.session.rollback()
+                print("Rolling back transaction")
+                return False
         except Exception as e:
-            print(f"Error checking or creating admin user: {e}")
-            print(f"Error type: {type(e).__name__}")
+            print(f"Error during admin user creation: {e}")
+            return False
 
 def list_users():
     """List all users in the database"""
@@ -202,76 +209,65 @@ def list_users():
     with app.app_context():
         try:
             # First check if tables exist
-            inspector = sqlalchemy.inspect(db.engine)
-            existing_tables = inspector.get_table_names()
+            engine = db.engine
+            inspector = sqlalchemy.inspect(engine)
+            tables = inspector.get_table_names()
             
-            if 'user' not in existing_tables:
-                print("User table does not exist yet.")
+            if 'user' not in tables or 'admin' not in tables:
+                print("User or admin tables do not exist yet")
                 return
-                
-            print("Users in the database:")
-            print("-" * 50)
+            
+            print("\nRegular Users:")
             users = User.query.all()
-            if not users:
-                print("No users found.")
-            else:
+            if users:
                 for user in users:
-                    print(f"ID: {user.id}, Email: {user.email}, Active: {user.is_active}")
-            
-            if 'admin' not in existing_tables:
-                print("\nAdmin table does not exist yet.")
-                return
-                
-            print("\nAdmins in the database:")
-            print("-" * 50)
-            admins = Admin.query.all()
-            if not admins:
-                print("No admin users found.")
+                    print(f"- {user.email} (ID: {user.id})")
             else:
+                print("No regular users found.")
+            
+            print("\nAdmin Users:")
+            admins = Admin.query.all()
+            if admins:
                 for admin in admins:
-                    print(f"ID: {admin.id}, Username: {admin.username}")
+                    print(f"- {admin.username} (ID: {admin.id})")
+            else:
+                print("No admin users found.")
         except Exception as e:
             print(f"Error listing users: {e}")
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Database setup and management script")
-    parser.add_argument('--drop', action='store_true', help='Drop all tables before creating them')
-    parser.add_argument('--init', action='store_true', help='Initialize database tables')
+    parser = argparse.ArgumentParser(description='Database setup script')
+    parser.add_argument('--init', action='store_true', help='Initialize the database')
+    parser.add_argument('--drop', action='store_true', help='Drop all tables before initialization')
     parser.add_argument('--create-admin', action='store_true', help='Create admin user')
-    parser.add_argument('--admin-username', help='Admin username (default: from env vars)')
-    parser.add_argument('--admin-password', help='Admin password (default: from env vars)')
-    parser.add_argument('--force', action='store_true', help='Force creation of admin even if one exists')
-    parser.add_argument('--list-users', action='store_true', help='List all users in the database')
+    parser.add_argument('--force', action='store_true', help='Force creation of admin user even if one exists')
+    parser.add_argument('--admin-username', help='Admin username (overrides environment variable)')
+    parser.add_argument('--admin-password', help='Admin password (overrides environment variable)')
+    parser.add_argument('--list-users', action='store_true', help='List all users')
     
-    print("Parsing command line arguments...")
     args = parser.parse_args()
-    print(f"Command line arguments: {args}")
     
-    # If no args provided, show help
-    if len(sys.argv) == 1:
-        parser.print_help()
-        sys.exit(0)
+    if not any([args.init, args.create_admin, args.list_users]):
+        # On Heroku, create admin by default if no arguments provided
+        if 'DYNO' in os.environ:
+            args.create_admin = True
+        else:
+            parser.print_help()
+            sys.exit(1)
     
-    # Execute commands
-    if args.init or args.drop:
-        try:
-            print("Initializing database...")
-            success = init_database(drop_all=args.drop)
-            if success:
-                print("Database initialization complete")
-            else:
-                print("Database initialization had some issues but we'll continue")
-        except Exception as e:
-            print(f"Database initialization failed: {e}")
-            # Don't exit with an error to allow deployment to continue
-            print("Continuing with deployment despite database initialization errors")
+    if args.init:
+        init_database(drop_all=args.drop)
     
     if args.create_admin:
-        print("Creating admin user...")
-        create_admin_user(args.admin_username, args.admin_password, args.force)
+        success = create_admin_user(
+            username=args.admin_username,
+            password=args.admin_password,
+            force=args.force
+        )
+        if not success and 'DYNO' in os.environ:
+            print("Failed to create admin user on Heroku - will continue anyway")
     
     if args.list_users:
-        print("Listing users...")
         list_users()
     
     print("=" * 80)
