@@ -1154,6 +1154,72 @@
                                 document.body.removeChild(link);
                             });
                         });
+                        
+                        // Set up refine buttons
+                        document.querySelectorAll('.refine-btn').forEach(btn => {
+                            btn.addEventListener('click', function() {
+                                const imageUrl = this.dataset.url;
+                                const originalPrompt = this.dataset.prompt;
+                                
+                                // Get the currently selected model
+                                const selectedModel = document.querySelector('.model-option.selected').dataset.model;
+                                
+                                // Only proceed for models that support image input
+                                if ((selectedModel === 'flux' || selectedModel === 'flux_pro' || selectedModel === 'stable_diffusion') || 
+                                    (modelData[selectedModel] && modelData[selectedModel].supports_image_input)) {
+                                    
+                                    console.log(`Setting up image refinement with ${selectedModel} for image: ${imageUrl}`);
+                                    
+                                    // Make sure image upload section is visible
+                                    const imageUploadSection = document.getElementById('imageUploadSection');
+                                    imageUploadSection.style.display = 'block';
+                                    
+                                    // Fetch the image and set it as the reference image
+                                    fetch(imageUrl)
+                                        .then(response => response.blob())
+                                        .then(blob => {
+                                            // Create a File object from the blob
+                                            const file = new File([blob], "reference-image.jpg", { type: "image/jpeg" });
+                                            
+                                            // Create a DataTransfer object to set the file input value
+                                            const dataTransfer = new DataTransfer();
+                                            dataTransfer.items.add(file);
+                                            
+                                            // Set the file input value
+                                            const fileInput = document.getElementById('referenceImage');
+                                            fileInput.files = dataTransfer.files;
+                                            
+                                            // Trigger the change event to update the preview
+                                            const event = new Event('change', { bubbles: true });
+                                            fileInput.dispatchEvent(event);
+                                            
+                                            // Set the preview image
+                                            const imagePreview = document.getElementById('imagePreview');
+                                            const previewContainer = document.querySelector('.preview-container');
+                                            
+                                            imagePreview.src = imageUrl;
+                                            previewContainer.style.display = 'block';
+                                            
+                                            // Update the file text display
+                                            const fileText = document.querySelector('.file-upload-text');
+                                            fileText.textContent = 'reference-image.jpg';
+                                            
+                                            // Scroll to the prompt section and focus it
+                                            const promptTextarea = document.getElementById('prompt');
+                                            promptTextarea.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                                            promptTextarea.focus();
+                                            
+                                            console.log('Reference image set successfully');
+                                        })
+                                        .catch(error => {
+                                            console.error('Error setting reference image:', error);
+                                        });
+                                } else {
+                                    console.warn(`Model ${selectedModel} does not support image input`);
+                                    alert('This model does not support image refinement.');
+                                }
+                            });
+                        });
                     }
                 })
                 .catch(error => {
