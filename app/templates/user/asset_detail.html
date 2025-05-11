@@ -175,10 +175,58 @@
             <a href="{{ url_for('user.asset_download', asset_id=asset.id) }}" class="action-button">
                 <i class="fas fa-download"></i> Download
             </a>
-            <a href="{{ url_for('user.dashboard') }}?prompt={{ asset.prompt|urlencode }}" class="action-button secondary">
+            <button id="regenerateBtn" class="action-button secondary" 
+                    data-prompt="{{ asset.prompt }}" 
+                    data-image-url="{{ asset.file_url }}"
+                    data-model="{{ asset.model }}">
                 <i class="fas fa-sync"></i> Regenerate
-            </a>
+            </button>
         </div>
     </div>
 </div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const regenerateBtn = document.getElementById('regenerateBtn');
+        
+        if (regenerateBtn) {
+            regenerateBtn.addEventListener('click', function() {
+                const prompt = this.dataset.prompt;
+                const imageUrl = this.dataset.imageUrl;
+                const modelName = this.dataset.model.toLowerCase();
+                
+                // Check if the model supports reference images
+                const supportsReferenceImage = 
+                    modelName.includes('flux') || 
+                    modelName.includes('stable diffusion') || 
+                    modelName.includes('sd');
+                
+                // Create URL to dashboard with prompt parameter
+                let dashboardUrl = "{{ url_for('user.dashboard') }}?prompt=" + encodeURIComponent(prompt);
+                
+                // If model supports reference images, we'll need to store the image URL in localStorage
+                // because we can't directly set a file input's value for security reasons
+                if (supportsReferenceImage && imageUrl) {
+                    // Store image URL in localStorage to be read by dashboard page
+                    localStorage.setItem('referenceImageUrl', imageUrl);
+                    
+                    // Add a flag to indicate we should use reference image
+                    dashboardUrl += '&useReferenceImage=true';
+                    
+                    // Set the model if we know which specific model it is
+                    if (modelName.includes('flux')) {
+                        dashboardUrl += '&model=flux';
+                    } else if (modelName.includes('stable diffusion') || modelName.includes('sd')) {
+                        dashboardUrl += '&model=stable_diffusion';
+                    }
+                }
+                
+                // Navigate to dashboard
+                window.location.href = dashboardUrl;
+            });
+        }
+    });
+</script>
 {% endblock %} 

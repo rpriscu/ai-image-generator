@@ -935,6 +935,55 @@
         }
     }
     
+    // Function to set reference image
+    async function setReferenceImage(imageUrl) {
+        try {
+            console.log('Setting reference image from URL:', imageUrl);
+            
+            // Make sure image upload section is visible
+            const imageUploadSection = document.getElementById('imageUploadSection');
+            imageUploadSection.style.display = 'block';
+            
+            // Fetch the image
+            const response = await fetch(imageUrl);
+            if (!response.ok) {
+                throw new Error(`Failed to fetch image: ${response.status} ${response.statusText}`);
+            }
+            
+            // Get the image as a blob
+            const blob = await response.blob();
+            
+            // Create a File object from the blob
+            const filename = imageUrl.split('/').pop().split('?')[0] || 'reference-image.jpg';
+            const file = new File([blob], filename, { type: blob.type || 'image/jpeg' });
+            
+            // Create a DataTransfer object to set the file input value
+            const dataTransfer = new DataTransfer();
+            dataTransfer.items.add(file);
+            
+            // Set the file input value
+            const fileInput = document.getElementById('referenceImage');
+            fileInput.files = dataTransfer.files;
+            
+            // Update the file text display
+            const fileText = document.querySelector('.file-upload-text');
+            fileText.textContent = filename;
+            
+            // Set the preview image
+            const imagePreview = document.getElementById('imagePreview');
+            const previewContainer = document.querySelector('.preview-container');
+            
+            imagePreview.src = URL.createObjectURL(blob);
+            previewContainer.style.display = 'block';
+            
+            console.log('Reference image set successfully');
+            return true;
+        } catch (error) {
+            console.error('Error setting reference image:', error);
+            return false;
+        }
+    }
+    
     // Close modal when clicking close button or outside
     document.addEventListener('DOMContentLoaded', function() {
         // Set up modal close handlers
@@ -1281,6 +1330,7 @@
         const urlParams = new URLSearchParams(window.location.search);
         const modelParam = urlParams.get('model');
         const promptParam = urlParams.get('prompt');
+        const useReferenceImage = urlParams.get('useReferenceImage') === 'true';
         
         // Set prompt from URL if present
         if (promptParam) {
@@ -1368,6 +1418,22 @@
                 input.dataset.active = (input.value !== '#ffffff') ? 'true' : 'false';
             }
         });
+        
+        // Check for reference image in localStorage that may have been set from asset_detail.html
+        if (useReferenceImage) {
+            const referenceImageUrl = localStorage.getItem('referenceImageUrl');
+            if (referenceImageUrl) {
+                console.log('Found reference image URL in localStorage:', referenceImageUrl);
+                
+                // Set the reference image
+                setReferenceImage(referenceImageUrl).then(success => {
+                    if (success) {
+                        // Clear the localStorage entry to prevent it from being used again
+                        localStorage.removeItem('referenceImageUrl');
+                    }
+                });
+            }
+        }
     });
 </script>
 {% endblock %} 
