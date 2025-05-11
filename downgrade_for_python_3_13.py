@@ -15,7 +15,7 @@ PACKAGES_TO_DOWNGRADE = {
     'Flask': '2.3.3',
     'itsdangerous': '2.1.2',
     'jinja2': '3.1.2',
-    'Pillow': '9.5.0'  # Version with available pre-built wheels
+    'Pillow': '10.4.0'  # Version with available pre-built wheels
 }
 
 def downgrade_packages():
