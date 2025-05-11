@@ -109,15 +109,41 @@ def configure_database(app):
 def create_default_admin(app):
     """Create default admin user if none exists"""
     # Skip admin creation if flag is set (for database setup)
-    if app.config.get('SKIP_ADMIN_CREATION'):
+    if app.config.get('SKIP_ADMIN_CREATION') or os.environ.get('SKIP_ADMIN_CREATION') == '1':
+        print("Skipping admin creation as requested by config or environment variable")
         return
         
-    with app.app_context():
-        if Admin.query.count() == 0 and app.config.get('ADMIN_USERNAME') and app.config.get('ADMIN_PASSWORD'):
-            Admin.create_admin(
-                username=app.config.get('ADMIN_USERNAME'),
-                password=app.config.get('ADMIN_PASSWORD')
-            )
+    try:
+        with app.app_context():
+            # Try to check if admin table exists first
+            try:
+                # Import inspect here to avoid circular imports
+                from sqlalchemy import inspect
+                inspector = inspect(db.engine)
+                if 'admin' not in inspector.get_table_names():
+                    print("Admin table does not exist yet - skipping admin check")
+                    return
+            except Exception as e:
+                print(f"Could not check for admin table: {e}")
+                return
+                
+            # Now it's safe to query the admin table
+            try:
+                admin_count = Admin.query.count()
+                if admin_count == 0 and app.config.get('ADMIN_USERNAME') and app.config.get('ADMIN_PASSWORD'):
+                    print(f"Creating default admin user: {app.config.get('ADMIN_USERNAME')}")
+                    Admin.create_admin(
+                        username=app.config.get('ADMIN_USERNAME'),
+                        password=app.config.get('ADMIN_PASSWORD')
+                    )
+                    print("Default admin user created successfully")
+                else:
+                    print(f"Admin user already exists or credentials not provided")
+            except Exception as e:
+                print(f"Error checking or creating admin user: {e}")
+    except Exception as e:
+        print(f"Error in create_default_admin: {e}")
+        # Don't raise the exception to allow the app to continue starting up
 
 def create_app(config_class=None):
     """Create and configure the Flask application"""
