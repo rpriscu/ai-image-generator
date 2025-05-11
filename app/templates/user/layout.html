@@ -7,7 +7,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;600&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css', _external=True) }}">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
         :root {
@@ -181,7 +181,7 @@
 <body>
     <header class="header">
         <a href="{{ url_for('user.dashboard') }}">
-            <img src="{{ url_for('static', filename='images/ZemingoLogo.png') }}" alt="Zemingo" class="logo">
+            <img src="{{ url_for('static', filename='images/ZemingoLogo.png', _external=True) }}" alt="Zemingo" class="logo">
         </a>
         
         <nav class="header-nav">

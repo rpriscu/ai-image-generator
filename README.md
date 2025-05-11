@@ -32,7 +32,7 @@ A Flask-based web application that generates AI images using fal.ai's API. The a
 ## Prerequisites
 
 - Python 3.11+
-- PostgreSQL or MySQL database
+- PostgreSQL database
 - fal.ai API key
 - Google OAuth 2.0 credentials
 

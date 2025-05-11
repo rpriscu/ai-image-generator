@@ -3,6 +3,8 @@
 {% block title %}Generator - Zemingo AI Asset Generator{% endblock %}
 
 {% block head %}
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+<script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
 <style>
     .generator-container {
         display: flex;
@@ -71,6 +73,10 @@
         border-color: var(--primary-light);
     }
     
+    .model-option::after {
+        display: none;
+    }
+    
     .model-name {
         font-weight: 600;
         margin-bottom: 5px;
@@ -126,6 +132,224 @@
         color: var(--text-secondary);
     }
     
+    /* File upload styles */
+    .file-upload-wrapper {
+        position: relative;
+        width: 100%;
+        margin-top: 5px;
+    }
+    
+    .file-upload-input {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 100%;
+        height: 100%;
+        opacity: 0;
+        cursor: pointer;
+        z-index: 2;
+    }
+    
+    .file-upload-label {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 10px 15px;
+        background-color: var(--surface-light);
+        border: 1px dashed #555;
+        border-radius: 4px;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+    
+    .file-upload-text {
+        color: var(--text-secondary);
+        flex-grow: 1;
+    }
+    
+    .file-upload-button {
+        background-color: var(--primary);
+        color: white;
+        padding: 6px 12px;
+        border-radius: 4px;
+        font-size: 14px;
+    }
+    
+    .file-hint {
+        font-size: 13px;
+        color: var(--text-secondary);
+        margin-top: 8px;
+    }
+    
+    /* Stable Diffusion Parameters Styles */
+    .sd-params-grid {
+        display: flex;
+        gap: 30px;
+        margin-top: 10px;
+    }
+    
+    .sd-params-column {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        gap: 20px;
+    }
+    
+    /* Make right column sliders start at the same vertical position as the negative prompt */
+    .sd-params-column:last-child {
+        padding-top: 0;
+        justify-content: space-between;
+    }
+    
+    /* Slider specific styling */
+    .slider-column {
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+    }
+    
+    .slider-group {
+        margin-bottom: 15px;
+    }
+    
+    .slider-group:last-child {
+        margin-bottom: 0;
+    }
+    
+    .slider-container {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        position: relative;
+        margin-bottom: 15px;
+    }
+    
+    .slider-container input[type="range"] {
+        flex: 1;
+    }
+    
+    .slider-container .param-value {
+        width: 45px;
+        text-align: right;
+        font-weight: 600;
+        color: #9c4dff;
+        font-size: 16px;
+    }
+    
+    .param-group {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+    }
+    
+    .param-group label {
+        font-size: 14px;
+        color: var(--text-secondary);
+    }
+    
+    .param-group textarea {
+        min-height: 90px;
+        font-size: 14px;
+    }
+    
+    .param-group input[type="number"] {
+        background-color: var(--surface-light);
+        border: 1px solid #333;
+        border-radius: 4px;
+        padding: 10px 12px;
+        color: var(--text);
+        font-family: 'Rubik', sans-serif;
+        font-size: 14px;
+        width: 100%;
+        box-sizing: border-box;
+    }
+    
+    .param-group input[type="range"] {
+        width: 100%;
+        background-color: var(--surface-light);
+        height: 6px;
+        border-radius: 3px;
+        outline: none;
+        -webkit-appearance: none;
+        margin: 12px 0 8px; /* Reduce margins to make sliders more compact */
+    }
+    
+    /* Replace with solid triangle thumbs */
+    .param-group input[type="range"]::-webkit-slider-thumb {
+        -webkit-appearance: none;
+        width: 0; 
+        height: 0; 
+        border-left: 8px solid transparent;
+        border-right: 8px solid transparent;
+        border-bottom: 14px solid var(--primary);
+        background-color: transparent; /* Ensure it's transparent */
+        cursor: pointer;
+        position: relative;
+        top: -8px; /* Adjust to center on track */
+        filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.3));
+    }
+    
+    /* Firefox support for triangle sliders */
+    .param-group input[type="range"]::-moz-range-thumb {
+        width: 0;
+        height: 0;
+        border: none;
+        border-left: 8px solid transparent;
+        border-right: 8px solid transparent;
+        border-bottom: 14px solid var(--primary);
+        background-color: var(--primary); /* Firefox needs this */
+        border-radius: 0;
+        cursor: pointer;
+        filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.3));
+        transform: translateY(-2px); /* Raise it in Firefox */
+    }
+    
+    /* Firefox track styling */
+    .param-group input[type="range"]::-moz-range-track {
+        height: 6px;
+        border-radius: 3px;
+        background: var(--surface-light);
+        border: 1px solid #444;
+    }
+    
+    .param-value {
+        font-size: 14px;
+        color: var(--primary-light);
+        text-align: right;
+        font-weight: 500;
+        margin-top: 2px;
+    }
+    
+    /* Style the slider track for better visibility */
+    .param-group input[type="range"]::-webkit-slider-runnable-track {
+        height: 6px;
+        border-radius: 3px;
+        background: var(--surface-light);
+        border: 1px solid #444;
+    }
+    
+    .preview-container {
+        position: relative;
+        margin-top: 10px;
+    }
+    
+    .remove-btn {
+        position: absolute;
+        top: 5px;
+        right: 5px;
+        width: 24px;
+        height: 24px;
+        border-radius: 50%;
+        background: rgba(0,0,0,0.7);
+        color: white;
+        border: none;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        font-size: 12px;
+    }
+    
     .form-actions {
         display: flex;
         justify-content: space-between;
@@ -178,77 +402,103 @@
         margin-top: 20px;
     }
     
-    .image-container {
+    .image-result {
         position: relative;
         background-color: var(--surface-light);
         border-radius: 8px;
         overflow: hidden;
-        aspect-ratio: 1 / 1;
+        aspect-ratio: 16 / 9;
+        box-shadow: 0 3px 8px rgba(0, 0, 0, 0.2);
+        transition: transform 0.2s, box-shadow 0.2s;
     }
     
-    .generated-image {
+    .image-result:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+    }
+    
+    .image-result img {
         width: 100%;
         height: 100%;
         object-fit: cover;
-        transition: transform 0.3s;
+        display: block;
     }
     
-    .image-overlay {
-        position: absolute;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        background-color: transparent;
-        opacity: 0;
-        transition: opacity 0.3s;
-    }
-    
-    .image-container:hover .image-overlay {
-        opacity: 1;
-    }
-    
-    .image-container:hover .generated-image {
-        transform: scale(1.05);
-    }
-    
-    .download-icon {
-        position: absolute;
-        top: 10px;
-        right: 10px;
-        background-color: var(--primary);
-        color: white;
-        width: 40px;
-        height: 40px;
-        border-radius: 50%;
+    .image-result.loading {
         display: flex;
-        align-items: center;
         justify-content: center;
-        cursor: pointer;
-        transition: background-color 0.2s;
-        text-decoration: none;
-        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3);
-    }
-    
-    .download-icon:hover {
-        background-color: #7722ff;
-    }
-    
-    .loading-placeholder {
-        width: 100%;
-        height: 100%;
+        align-items: center;
+        min-height: 200px;
         background: linear-gradient(-45deg, var(--surface-light) 25%, var(--surface) 50%, var(--surface-light) 75%);
         background-size: 400% 400%;
         animation: shimmer 2s infinite;
-        border-radius: 8px;
     }
     
-    .loading-text {
+    .loading-spinner {
+        width: 40px;
+        height: 40px;
+        border: 3px solid rgba(255, 255, 255, 0.3);
+        border-radius: 50%;
+        border-top-color: var(--primary);
+        animation: spin 1s ease-in-out infinite;
+    }
+    
+    @keyframes spin {
+        to { transform: rotate(360deg); }
+    }
+    
+    .image-actions {
         position: absolute;
-        top: 50%;
-        left: 50%;
-        transform: translate(-50%, -50%);
-        color: var(--text-secondary);
+        bottom: 0;
+        left: 0;
+        right: 0;
+        background-color: rgba(0, 0, 0, 0.6);
+        display: flex;
+        justify-content: flex-end;
+        padding: 8px 12px;
+        transform: translateY(100%);
+        transition: transform 0.3s ease;
+    }
+    
+    .image-result:hover .image-actions {
+        transform: translateY(0);
+    }
+    
+    .download-btn, .delete-btn, .refine-btn {
+        background: none;
+        border: none;
+        color: white;
+        font-size: 16px;
+        cursor: pointer;
+        margin-left: 15px;
+        padding: 5px;
+        border-radius: 3px;
+        transition: background-color 0.2s;
+    }
+    
+    .download-btn:hover {
+        background-color: var(--primary);
+    }
+    
+    .delete-btn:hover {
+        background-color: #f44336;
+    }
+    
+    .refine-btn:hover {
+        background-color: #4CAF50;
+    }
+    
+    .refine-btn {
+        margin-left: 0; /* First button doesn't need left margin */
+    }
+    
+    .error-message {
+        background-color: rgba(244, 67, 54, 0.1);
+        color: #f44336;
+        padding: 12px 15px;
+        border-radius: 4px;
+        margin: 20px 0;
+        text-align: center;
     }
     
     @keyframes shimmer {
@@ -373,25 +623,109 @@
 
 <div class="generator-container">
     <div class="form-section">
-        <form id="promptForm" class="prompt-form">
+        <form id="promptForm" class="prompt-form" enctype="multipart/form-data">
             <div class="form-group">
                 <label for="prompt">Describe what you want to see in detail:</label>
                 <textarea id="prompt" name="prompt" required 
                     placeholder="e.g., A futuristic city skyline with flying cars and neon lights, photorealistic, detailed, 8k"></textarea>
             </div>
             
+            <!-- Make image upload visible by default for Stable Diffusion -->
+            <div class="form-group" id="imageUploadSection">
+                <label for="referenceImage">Reference Image (Optional):</label>
+                <div class="file-upload-wrapper">
+                    <input type="file" id="referenceImage" name="image" accept="image/*" class="file-upload-input">
+                    <div class="file-upload-label">
+                        <span class="file-upload-text">Choose an image...</span>
+                        <span class="file-upload-button">Browse</span>
+                    </div>
+                </div>
+                <div class="preview-container" style="display: none;">
+                    <img id="imagePreview" alt="Preview" style="max-width: 100%; max-height: 200px; margin-top: 10px;">
+                    <button type="button" id="removeImageBtn" class="remove-btn">✕</button>
+                </div>
+                <p class="file-hint">For image-to-image generation, you can upload a reference image to guide the model.</p>
+            </div>
+            
+            <!-- Mask upload section for Flux.1 [pro] Fill -->
+            <div class="form-group" id="maskUploadSection" style="display: none;">
+                <label for="maskImage">Mask Image (Required for Fill):</label>
+                <div class="file-upload-wrapper">
+                    <input type="file" id="maskImage" name="mask" accept="image/*" class="file-upload-input">
+                    <div class="file-upload-label">
+                        <span class="file-upload-text">Choose a mask image...</span>
+                        <span class="file-upload-button">Browse</span>
+                    </div>
+                </div>
+                <div class="preview-container mask-preview-container">
+                    <img id="maskPreview" alt="Mask Preview" style="max-width: 100%; max-height: 200px; display: none;">
+                    <button type="button" id="removeMaskBtn" class="remove-btn" style="display: none;">✕</button>
+                </div>
+                <small class="form-text text-muted">
+                    <strong>Mask Requirements:</strong> 
+                    <ul>
+                        <li>White areas (255, 255, 255) will be filled with generated content</li>
+                        <li>Black areas (0, 0, 0) will preserve the original image</li>
+                        <li>The mask must have the same dimensions (width x height) as the reference image</li>
+                    </ul>
+                </small>
+            </div>
+            
+            <div class="form-group" id="sdParamsSection">
+                <label>Stable Diffusion Parameters:</label>
+                <div class="sd-params-grid">
+                    <!-- Left column: Negative prompt and other text inputs -->
+                    <div class="sd-params-column">
+                        <div class="param-group">
+                            <label for="negative_prompt">Negative Prompt:</label>
+                            <textarea id="negative_prompt" name="negative_prompt" style="min-height: 92px;"
+                                placeholder="Describe what you don't want to see in the image"></textarea>
+                        </div>
+                        <div class="param-group" style="margin-top: 15px;">
+                            <label for="seed">Seed (Optional):</label>
+                            <input type="number" id="seed" name="seed" placeholder="Leave empty for random">
+                        </div>
+                    </div>
+                    
+                    <!-- Right column: All sliders -->
+                    <div class="sd-params-column slider-column">
+                        <div class="param-group slider-group" style="margin-bottom: 8px;">
+                            <label for="strength">Strength:</label>
+                            <div class="slider-container" style="margin-bottom: 8px;">
+                                <input type="range" id="strength" name="strength" min="0" max="1" step="0.05" value="0.75">
+                                <span class="param-value">0.75</span>
+                            </div>
+                        </div>
+                        <div class="param-group slider-group" style="margin-bottom: 8px;">
+                            <label for="guidance_scale">Guidance Scale:</label>
+                            <div class="slider-container" style="margin-bottom: 8px;">
+                                <input type="range" id="guidance_scale" name="guidance_scale" min="1" max="20" step="0.5" value="7.5">
+                                <span class="param-value">7.5</span>
+                            </div>
+                        </div>
+                        <div class="param-group slider-group">
+                            <label for="num_inference_steps">Inference Steps:</label>
+                            <div class="slider-container" style="margin-bottom: 8px;">
+                                <input type="range" id="num_inference_steps" name="num_inference_steps" min="1" max="50" step="1" value="30">
+                                <span class="param-value">30</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
             <div class="form-group">
                 <label>Select an AI model:</label>
                 <div class="model-select">
                     {% for model_id, model in models.items() %}
-                    <div class="model-option {% if model_id == 'flux' %}selected{% endif %}" data-model="{{ model_id }}" data-is-pro="{{ 'true' if model_id == 'flux_pro' else 'false' }}">
+                    <div class="model-option {% if model_id == 'flux' %}selected{% endif %}" data-model="{{ model_id }}" data-is-pro="{{ 'true' if model_id == 'flux_pro' else 'false' }}" onclick="selectModel('{{ model_id }}', {{ 'true' if model_id == 'flux_pro' else 'false' }}, this)">
                         <div class="model-name">
                             {{ model.name }}
                             {% if 'pro' in model_id %}
                             <span class="premium-badge">Pro</span>
                             {% endif %}
                             {% if model.detailed_info is defined %}
-                            <span class="info-icon" data-model-id="{{ model_id }}">
+                            <span class="info-icon" data-model-id="{{ model_id }}" onclick="event.stopPropagation(); showModelInfo('{{ model_id }}')">
                             </span>
                             {% endif %}
                         </div>
@@ -435,223 +769,498 @@
 
 {% block scripts %}
 <script>
-    document.addEventListener('DOMContentLoaded', function() {
-        const promptForm = document.getElementById('promptForm');
-        const generateBtn = document.getElementById('generateBtn');
-        const resultsContainer = document.getElementById('results');
-        const modelOptions = document.querySelectorAll('.model-option');
-        const infoIcons = document.querySelectorAll('.info-icon');
-        const modelInfoModal = document.getElementById('modelInfoModal');
-        const modalModelName = document.getElementById('modalModelName');
-        const modalModelContent = document.getElementById('modalModelContent');
-        const closeModal = document.querySelector('.close-modal');
-        let selectedModel = 'flux'; // Default model
-        let isProModel = false; // Track if selected model is Pro
-        
-        // Handle model info icon clicks
-        infoIcons.forEach(icon => {
-            icon.addEventListener('click', function(e) {
-                e.stopPropagation(); // Prevent triggering model selection
-                const modelId = this.dataset.modelId;
-                
-                // Fetch model info from server
-                fetch(`/api/model-info/${modelId}`)
-                    .then(response => response.json())
-                    .then(data => {
-                        if (data && data.name) {
-                            // Set modal content
-                            modalModelName.textContent = data.name;
-                            
-                            // Build content sections
-                            let contentHTML = '';
-                            
-                            if (data.info.what_is) {
-                                contentHTML += `<div class="info-section">
-                                    ${data.info.what_is.replace(/\n/g, '<br>')}
-                                </div>`;
-                            }
-                            
-                            if (data.info.use_cases) {
-                                contentHTML += `<div class="info-section">
-                                    ${data.info.use_cases.replace(/\n/g, '<br>')}
-                                </div>`;
-                            }
-                            
-                            if (data.info.tips) {
-                                contentHTML += `<div class="info-section">
-                                    ${data.info.tips.replace(/\n/g, '<br>')}
-                                </div>`;
-                            }
-                            
-                            // Set HTML content directly to render links
-                            modalModelContent.innerHTML = contentHTML;
-                            
-                            // Add target="_blank" and rel="noopener noreferrer" to all links for security
-                            modalModelContent.querySelectorAll('a').forEach(link => {
-                                if (!link.hasAttribute('target')) {
-                                    link.setAttribute('target', '_blank');
-                                }
-                                link.setAttribute('rel', 'noopener noreferrer');
-                                
-                                // Style links
-                                link.style.color = 'var(--primary-light)';
-                                link.style.textDecoration = 'underline';
-                                link.style.fontWeight = '500';
-                            });
-                            
-                            // Show modal
-                            modelInfoModal.style.display = 'block';
+    // Make modelData available directly without parsing JSON
+    let modelData = {
+        {% for model_id, model in models.items() %}
+            '{{ model_id }}': {
+                name: '{{ model.name }}',
+                type: '{{ model.type if model.type else "text-to-image" }}',
+                supports_image_input: {{ 'true' if model.supports_image_input else 'false' }}
+                {%- if model.description %}, description: '{{ model.description|safe }}'{% endif %}
+            }{% if not loop.last %},{% endif %}
+        {% endfor %}
+    };
+    
+    // Ensure FLUX and Stable Diffusion have image upload support
+    if (modelData.flux) {
+        modelData.flux.supports_image_input = true;
+    }
+    if (modelData.stable_diffusion) {
+        modelData.stable_diffusion.supports_image_input = true;
+        modelData.stable_diffusion.type = 'hybrid';
+    }
+    
+    console.log('Model data loaded directly:', Object.keys(modelData));
+    
+    // Define these functions before they're used in HTML
+    // Simple direct model selection function
+    function selectModel(modelId, isPro, element) {
+        try {
+            console.log(`Selecting model directly: ${modelId}, isPro: ${isPro}`);
+            
+            // Update UI
+            document.querySelectorAll('.model-option').forEach(el => el.classList.remove('selected'));
+            element.classList.add('selected');
+            
+            // Update button text
+            const generateBtn = document.getElementById('generateBtn');
+            if (isPro) {
+                generateBtn.textContent = 'Generate 1 Premium Image';
+            } else {
+                generateBtn.textContent = 'Generate 4 Images';
+            }
+            
+            // Update UI sections
+            const imageUploadSection = document.getElementById('imageUploadSection');
+            const maskUploadSection = document.getElementById('maskUploadSection');
+            const sdParamsSection = document.getElementById('sdParamsSection');
+            
+            // Default: hide all sections
+            imageUploadSection.style.display = 'none';
+            maskUploadSection.style.display = 'none';
+            sdParamsSection.style.display = 'none';
+            
+            // Special handling for Stable Diffusion
+            if (modelId === 'stable_diffusion') {
+                imageUploadSection.style.display = 'block';
+                sdParamsSection.style.display = 'block';
+                console.log('Showing Stable Diffusion UI components');
+            } 
+            // FLUX.1 [pro] Fill needs both image and mask
+            else if (modelId === 'flux_pro') {
+                imageUploadSection.style.display = 'block';
+                maskUploadSection.style.display = 'block';
+                console.log('Showing FLUX.1 [pro] Fill UI components');
+            }
+            // FLUX.1 should also show image upload
+            else if (modelId === 'flux') {
+                imageUploadSection.style.display = 'block';
+                console.log('Showing image upload for FLUX.1');
+            }
+            // Check model data for other models that support image input
+            else if (modelData && modelData[modelId] && 
+                    (modelData[modelId].type === 'hybrid' || 
+                    modelData[modelId].type === 'image-to-image' || 
+                    modelData[modelId].supports_image_input === true)) {
+                imageUploadSection.style.display = 'block';
+                console.log(`Showing image upload for model: ${modelId}`);
+            }
+        } catch (error) {
+            console.error('Error in selectModel:', error);
+        }
+    }
+    
+    // Show model info in modal
+    function showModelInfo(modelId) {
+        try {
+            console.log(`Showing info for model: ${modelId}`);
+            
+            // Fetch model info from server
+            fetch(`/api/model-info/${modelId}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data && data.name) {
+                        // Set modal content
+                        document.getElementById('modalModelName').textContent = data.name;
+                        
+                        // Build content sections
+                        let contentHTML = '';
+                        
+                        if (data.info.what_is) {
+                            contentHTML += `<div class="info-section">
+                                ${data.info.what_is.replace(/\n/g, '<br>')}
+                            </div>`;
                         }
-                    })
-                    .catch(error => {
-                        console.error('Error fetching model info:', error);
-                    });
-            });
-        });
-        
-        // Close modal events
-        closeModal.addEventListener('click', function() {
-            modelInfoModal.style.display = 'none';
+                        
+                        if (data.info.use_cases) {
+                            contentHTML += `<div class="info-section">
+                                ${data.info.use_cases.replace(/\n/g, '<br>')}
+                            </div>`;
+                        }
+                        
+                        if (data.info.tips) {
+                            contentHTML += `<div class="info-section">
+                                ${data.info.tips.replace(/\n/g, '<br>')}
+                            </div>`;
+                        }
+                        
+                        // Set HTML content directly to render links
+                        document.getElementById('modalModelContent').innerHTML = contentHTML;
+                        
+                        // Style links
+                        document.getElementById('modalModelContent').querySelectorAll('a').forEach(link => {
+                            if (!link.hasAttribute('target')) {
+                                link.setAttribute('target', '_blank');
+                            }
+                            link.setAttribute('rel', 'noopener noreferrer');
+                            link.style.color = 'var(--primary-light)';
+                            link.style.textDecoration = 'underline';
+                            link.style.fontWeight = '500';
+                        });
+                        
+                        // Show modal
+                        document.getElementById('modelInfoModal').style.display = 'block';
+                    }
+                })
+                .catch(error => {
+                    console.error('Error fetching model info:', error);
+                });
+        } catch (error) {
+            console.error('Error in showModelInfo:', error);
+        }
+    }
+    
+    // Close modal when clicking close button or outside
+    document.addEventListener('DOMContentLoaded', function() {
+        // Set up modal close handlers
+        document.querySelector('.close-modal').addEventListener('click', function() {
+            document.getElementById('modelInfoModal').style.display = 'none';
         });
         
         window.addEventListener('click', function(e) {
-            if (e.target === modelInfoModal) {
-                modelInfoModal.style.display = 'none';
+            if (e.target === document.getElementById('modelInfoModal')) {
+                document.getElementById('modelInfoModal').style.display = 'none';
             }
         });
         
-        // Handle model selection
-        modelOptions.forEach(option => {
-            option.addEventListener('click', function() {
-                // Remove selected class from all options
-                modelOptions.forEach(opt => opt.classList.remove('selected'));
-                
-                // Add selected class to clicked option
-                this.classList.add('selected');
-                
-                // Update selected model
-                selectedModel = this.dataset.model;
-                isProModel = this.dataset.isPro === 'true';
-                
-                // Update button text
-                if (isProModel) {
-                    generateBtn.textContent = 'Generate 1 Premium Image';
-                } else {
-                    generateBtn.textContent = 'Generate 4 Images';
-                }
+        // Handle range input value updates
+        document.querySelectorAll('input[type="range"]').forEach(input => {
+            const valueDisplay = input.nextElementSibling;
+            input.addEventListener('input', function() {
+                valueDisplay.textContent = this.value;
             });
         });
         
-        // Select the first model option by default
-        if (modelOptions.length > 0 && !document.querySelector('.model-option.selected')) {
-            modelOptions[0].click();
+        // Handle file input
+        const fileInput = document.getElementById('referenceImage');
+        if (fileInput) {
+            const previewContainer = document.querySelector('.preview-container');
+            const imagePreview = document.getElementById('imagePreview');
+            const fileText = document.querySelector('.file-upload-text');
+            
+            fileInput.addEventListener('change', function() {
+                if (this.files && this.files[0]) {
+                    fileText.textContent = this.files[0].name;
+                    
+                    const reader = new FileReader();
+                    reader.onload = function(e) {
+                        imagePreview.src = e.target.result;
+                        previewContainer.style.display = 'block';
+                    };
+                    reader.readAsDataURL(this.files[0]);
+                }
+            });
+            
+            // Handle removing the image
+            const removeBtn = document.getElementById('removeImageBtn');
+            if (removeBtn) {
+                removeBtn.addEventListener('click', function() {
+                    fileInput.value = '';
+                    fileText.textContent = 'Choose an image...';
+                    previewContainer.style.display = 'none';
+                });
+            }
         }
         
-        // Populate prompt from URL parameter if present
+        // Handle mask file input
+        const maskInput = document.getElementById('maskImage');
+        if (maskInput) {
+            const previewContainer = maskInput.closest('.form-group').querySelector('.preview-container');
+            const maskPreview = document.getElementById('maskPreview');
+            const fileText = maskInput.closest('.form-group').querySelector('.file-upload-text');
+            
+            maskInput.addEventListener('change', function() {
+                if (this.files && this.files[0]) {
+                    fileText.textContent = this.files[0].name;
+                    
+                    const reader = new FileReader();
+                    reader.onload = function(e) {
+                        maskPreview.src = e.target.result;
+                        previewContainer.style.display = 'block';
+                    };
+                    reader.readAsDataURL(this.files[0]);
+                }
+            });
+            
+            // Handle removing the mask image
+            const removeMaskBtn = document.getElementById('removeMaskBtn');
+            if (removeMaskBtn) {
+                removeMaskBtn.addEventListener('click', function() {
+                    maskInput.value = '';
+                    fileText.textContent = 'Choose a mask image...';
+                    previewContainer.style.display = 'none';
+                });
+            }
+        }
+        
+        // Handle form submission
+        const promptForm = document.getElementById('promptForm');
+        if (promptForm) {
+            promptForm.addEventListener('submit', function(e) {
+                e.preventDefault();
+                
+                // Get the selected model
+                const selectedOption = document.querySelector('.model-option.selected');
+                if (!selectedOption) {
+                    console.error('No model selected');
+                    return;
+                }
+                
+                const modelId = selectedOption.dataset.model;
+                const isPro = selectedOption.dataset.isPro === 'true';
+                const prompt = document.getElementById('prompt').value.trim();
+                
+                if (!prompt) {
+                    alert('Please enter a prompt');
+                    return;
+                }
+                
+                console.log(`Generating with model: ${modelId}, isPro: ${isPro}`);
+                
+                // Show loading state
+                const generateBtn = document.getElementById('generateBtn');
+                const resultsContainer = document.getElementById('results');
+                
+                generateBtn.disabled = true;
+                generateBtn.textContent = 'Generating...';
+                resultsContainer.innerHTML = '';
+                
+                // Create loading placeholders
+                const numImages = isPro ? 1 : 4;
+                for (let i = 0; i < numImages; i++) {
+                    resultsContainer.innerHTML += `
+                        <div class="image-result loading">
+                            <div class="loading-spinner"></div>
+                        </div>
+                    `;
+                }
+                
+                // Build form data
+                const formData = new FormData();
+                formData.append('prompt', prompt);
+                formData.append('model', modelId);
+                formData.append('num_images', numImages);
+                
+                // Add image if one is selected
+                const referenceImage = document.getElementById('referenceImage').files[0];
+                if (referenceImage) {
+                    formData.append('image', referenceImage);
+                }
+                
+                // Add mask image for Flux.1 [pro] Fill if selected
+                if (modelId === 'flux_pro') {
+                    const maskImage = document.getElementById('maskImage').files[0];
+                    if (maskImage) {
+                        formData.append('mask', maskImage);
+                    } else if (document.getElementById('maskUploadSection').style.display !== 'none') {
+                        alert('FLUX.1 [pro] Fill requires a mask image');
+                        generateBtn.disabled = false;
+                        generateBtn.textContent = isPro ? 'Generate 1 Premium Image' : 'Generate 4 Images';
+                        return;
+                    }
+                }
+                
+                // Add Stable Diffusion parameters if needed
+                if (modelId === 'stable_diffusion') {
+                    const negativePrompt = document.getElementById('negative_prompt').value.trim();
+                    if (negativePrompt) formData.append('negative_prompt', negativePrompt);
+                    
+                    formData.append('strength', document.getElementById('strength').value);
+                    formData.append('guidance_scale', document.getElementById('guidance_scale').value);
+                    formData.append('num_inference_steps', document.getElementById('num_inference_steps').value);
+                    
+                    const seed = document.getElementById('seed').value.trim();
+                    if (seed) formData.append('seed', seed);
+                }
+                
+                // Add Recraft V3 parameters if needed
+                if (modelId === 'recraft') {
+                    const styleElement = document.getElementById('recraft_style');
+                    if (styleElement && styleElement.value) {
+                        formData.append('recraft_style', styleElement.value);
+                    }
+                    
+                    const imageSizeElement = document.getElementById('recraft_image_size');
+                    if (imageSizeElement && imageSizeElement.value) {
+                        formData.append('recraft_image_size', imageSizeElement.value);
+                    }
+                    
+                    // Get safety checker state
+                    const safetyElement = document.getElementById('recraft_safety');
+                    if (safetyElement) {
+                        formData.append('recraft_safety', safetyElement.checked ? 'true' : 'false');
+                    }
+                    
+                    // Add colors that are not default #ffffff
+                    const color1 = document.getElementById('recraft_color1');
+                    const color2 = document.getElementById('recraft_color2');
+                    const color3 = document.getElementById('recraft_color3');
+                    
+                    if (color1 && color1.value !== '#ffffff' && color1.dataset.active !== 'false') {
+                        formData.append('recraft_color1', color1.value);
+                    }
+                    if (color2 && color2.value !== '#ffffff' && color2.dataset.active !== 'false') {
+                        formData.append('recraft_color2', color2.value);
+                    }
+                    if (color3 && color3.value !== '#ffffff' && color3.dataset.active !== 'false') {
+                        formData.append('recraft_color3', color3.value);
+                    }
+                }
+                
+                // Send the request
+                fetch('/api/generate', {
+                    method: 'POST',
+                    body: formData
+                })
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error(`Server error: ${response.status}`);
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    // Show the generated images
+                    resultsContainer.innerHTML = '';
+                    
+                    if (data.image_urls && data.image_urls.length > 0) {
+                        data.image_urls.forEach(url => {
+                            resultsContainer.innerHTML += `
+                                <div class="image-result">
+                                    <img src="${url}" alt="Generated image">
+                                    <div class="image-actions">
+                                        <button class="refine-btn" data-url="${url}" data-prompt="${prompt}" title="Refine this image">
+                                            <i class="fas fa-magic"></i>
+                                        </button>
+                                        <button class="download-btn" data-url="${url}" title="Download Image">
+                                            <i class="fas fa-download"></i>
+                                        </button>
+                                        <button class="delete-btn" data-url="${url}" title="Delete Image">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                            `;
+                        });
+                        
+                        // Set up download buttons
+                        document.querySelectorAll('.download-btn').forEach(btn => {
+                            btn.addEventListener('click', function() {
+                                const url = this.dataset.url;
+                                const link = document.createElement('a');
+                                link.href = url;
+                                link.download = url.split('/').pop().split('?')[0];
+                                document.body.appendChild(link);
+                                link.click();
+                                document.body.removeChild(link);
+                            });
+                        });
+                    }
+                })
+                .catch(error => {
+                    resultsContainer.innerHTML = `
+                        <div class="error-message">
+                            <p>Error: ${error.message}</p>
+                        </div>
+                    `;
+                })
+                .finally(() => {
+                    generateBtn.disabled = false;
+                    generateBtn.textContent = 'Generate';
+                });
+            });
+        }
+        
+        // Check URL parameters for initial model and prompt
         const urlParams = new URLSearchParams(window.location.search);
+        const modelParam = urlParams.get('model');
         const promptParam = urlParams.get('prompt');
+        
+        // Set prompt from URL if present
         if (promptParam) {
             document.getElementById('prompt').value = promptParam;
         }
         
-        // Handle form submission
-        promptForm.addEventListener('submit', async function(e) {
-            e.preventDefault();
-            
-            const prompt = document.getElementById('prompt').value.trim();
-            
-            if (!prompt) {
-                alert('Please enter a prompt');
-                return;
+        // Trigger model selection from URL if specified
+        if (modelParam && modelData[modelParam]) {
+            const modelOption = document.querySelector(`.model-option[data-model="${modelParam}"]`);
+            if (modelOption) {
+                modelOption.click();
             }
-            
-            // Disable button and show loading state
-            generateBtn.disabled = true;
-            generateBtn.textContent = isProModel ? 'Generating Premium Image...' : 'Generating...';
-            
-            // Show loading placeholders
-            resultsContainer.innerHTML = '';
-            
-            // For Pro models, only show one placeholder
-            const placeholdersCount = isProModel ? 1 : 4;
-            
-            for (let i = 0; i < placeholdersCount; i++) {
-                resultsContainer.innerHTML += `
-                    <div class="image-container">
-                        <div class="loading-placeholder"></div>
-                        <div class="loading-text">Generating${isProModel ? ' Premium Image' : ''}...</div>
-                    </div>
-                `;
-            }
-            
-            // Create form data
-            const formData = new FormData();
-            formData.append('prompt', prompt);
-            formData.append('model', selectedModel);
-            
-            // For non-Pro models, request 4 images
-            if (!isProModel) {
-                formData.append('num_images', 4);
-            }
-            
+        }
+        
+        // Initialize UI for the default selected model
+        function initializeDefaultModel() {
             try {
-                // Send request to API
-                const response = await fetch('/api/generate', {
-                    method: 'POST',
-                    body: formData
+                // Find the initially selected model
+                const selectedOption = document.querySelector('.model-option.selected');
+                if (selectedOption) {
+                    // Get model data
+                    const modelId = selectedOption.dataset.model;
+                    const isPro = selectedOption.dataset.isPro === 'true';
+                    
+                    console.log('Initializing UI for default model:', modelId);
+                    
+                    // Update UI for the selected model
+                    const imageUploadSection = document.getElementById('imageUploadSection');
+                    const sdParamsSection = document.getElementById('sdParamsSection');
+                    
+                    // Default: hide both sections
+                    imageUploadSection.style.display = 'none';
+                    sdParamsSection.style.display = 'none';
+                    
+                    // Set appropriate sections based on model
+                    if (modelId === 'stable_diffusion') {
+                        imageUploadSection.style.display = 'block';
+                        sdParamsSection.style.display = 'block';
+                    } else if (modelId === 'flux') {
+                        // FLUX.1 should also show image upload
+                        imageUploadSection.style.display = 'block';
+                    } else if (modelData && modelData[modelId] && 
+                              (modelData[modelId].type === 'hybrid' || 
+                               modelData[modelId].type === 'image-to-image' || 
+                               modelData[modelId].supports_image_input === true)) {
+                        imageUploadSection.style.display = 'block';
+                    }
+                    
+                    // Set button text
+                    const generateBtn = document.getElementById('generateBtn');
+                    if (isPro) {
+                        generateBtn.textContent = 'Generate 1 Premium Image';
+                    } else {
+                        generateBtn.textContent = 'Generate 4 Images';
+                    }
+                }
+            } catch (error) {
+                console.error('Error initializing default model:', error);
+            }
+        }
+        
+        // Run initialization
+        initializeDefaultModel();
+
+        // Initialize color pickers for Recraft V3
+        const colorInputs = [
+            document.getElementById('recraft_color1'),
+            document.getElementById('recraft_color2'),
+            document.getElementById('recraft_color3')
+        ];
+        
+        colorInputs.forEach(input => {
+            if (input) {
+                // Set default state
+                input.dataset.active = 'false';
+                
+                // Add change listener
+                input.addEventListener('change', function() {
+                    // Mark as active if not #ffffff (white)
+                    this.dataset.active = (this.value !== '#ffffff') ? 'true' : 'false';
+                    console.log(`Color input ${this.id} active: ${this.dataset.active}, value: ${this.value}`);
                 });
                 
-                const data = await response.json();
-                
-                if (!response.ok) {
-                    throw new Error(data.error || 'Failed to generate images');
-                }
-                
-                // Display results
-                displayResults(data.image_urls);
-                
-            } catch (error) {
-                alert('Error: ' + error.message);
-                resultsContainer.innerHTML = `
-                    <div class="no-results">
-                        Error: ${error.message}
-                    </div>
-                `;
-            } finally {
-                // Reset button state
-                generateBtn.disabled = false;
-                generateBtn.textContent = isProModel ? 'Generate 1 Premium Image' : 'Generate 4 Images';
+                // Initial state
+                input.dataset.active = (input.value !== '#ffffff') ? 'true' : 'false';
             }
         });
-        
-        // Function to display results
-        function displayResults(imageUrls) {
-            if (!imageUrls || imageUrls.length === 0) {
-                resultsContainer.innerHTML = `
-                    <div class="no-results">
-                        No images were generated. Please try again.
-                    </div>
-                `;
-                return;
-            }
-            
-            resultsContainer.innerHTML = '';
-            
-            imageUrls.forEach(url => {
-                const filename = url.split('/').pop().split('?')[0];
-                
-                resultsContainer.innerHTML += `
-                    <div class="image-container">
-                        <img src="${url}" alt="Generated image" class="generated-image">
-                        <div class="image-overlay">
-                            <a href="${url}" download="${filename}" class="download-icon">
-                                <i class="fas fa-download"></i>
-                            </a>
-                        </div>
-                    </div>
-                `;
-            });
-        }
     });
 </script>
 {% endblock %} 

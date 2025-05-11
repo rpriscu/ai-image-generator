@@ -104,6 +104,10 @@ def create_app(config_class=None):
     # Now apply our custom session interface
     configure_session_interface(app)
     
+    # Configure static files for PythonAnywhere
+    from app.utils.static_files import configure_static_files
+    configure_static_files(app)
+    
     # Register context processors
     register_context_processors(app)
     
