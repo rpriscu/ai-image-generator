@@ -218,7 +218,7 @@ def create_app(config_name=None):
     # Configure for Heroku if running on Heroku
     if 'DYNO' in os.environ:
         print("Configuring for Heroku...")
-        from heroku import configure_for_heroku
+        from scripts.deployment.heroku import configure_for_heroku
         configure_for_heroku(app)
     
     # Register context processors
