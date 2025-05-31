@@ -154,13 +154,13 @@ def create_default_admin(app):
         print(f"Error in create_default_admin: {e}")
         # Don't raise the exception to allow the app to continue starting up
 
-def create_app(config_class=None):
+def create_app(config_name=None):
     """Create and configure the Flask application"""
     print("Creating Flask application...")
     app = Flask(__name__)
     
     # Load configuration
-    app.config.from_object(config_class if config_class else get_config())
+    app.config.from_object(config_name if config_name else get_config())
     
     # Configure session settings based on environment
     # Default to filesystem sessions
@@ -229,6 +229,28 @@ def create_app(config_class=None):
     
     # Create default admin user
     create_default_admin(app)
+    
+    # Check database schema on startup
+    with app.app_context():
+        from app.models.models import Asset
+        from sqlalchemy import inspect, text
+        
+        # Only in production (Heroku)
+        if os.environ.get('DYNO'):
+            try:
+                # Check if we need to update the file_url column
+                inspector = inspect(db.engine)
+                columns = {col['name']: col for col in inspector.get_columns('asset')}
+                
+                if 'file_url' in columns and columns['file_url']['type'].length != 2048:
+                    app.logger.warning("Detected Asset.file_url column with wrong size, updating to 2048 characters")
+                    
+                    # Execute SQL to alter the column size
+                    db.session.execute(text("ALTER TABLE asset ALTER COLUMN file_url TYPE VARCHAR(2048)"))
+                    db.session.commit()
+                    app.logger.info("Successfully updated asset.file_url column size to 2048")
+            except Exception as e:
+                app.logger.error(f"Error checking/updating database schema: {str(e)}")
     
     print("Flask application created successfully")
     return app 

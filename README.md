@@ -1,197 +1,212 @@
-# Zemingo AI Image Generator
+# AI Image Generator
 
-A Flask-based web application that generates AI images using fal.ai's API. The application features a modern dark-themed UI, Google Sign-In authentication for Zemingo employees, and an admin panel for user management and usage tracking.
+A Flask-based web application for generating AI images using various models through the Fal.ai API.
 
 ## Features
 
-- **User Authentication**:
-  - Google Sign-In restricted to @zemingo.com domain
-  - Secure authentication with OAuth 2.0
-  - Separate admin authentication system
+- **Multiple AI Models**: Support for FLUX, Recraft V3, Stable Video, and FLUX Pro (Fill)
+- **User Authentication**: Google OAuth integration
+- **Usage Tracking**: Monthly usage limits and tracking
+- **Asset Management**: Save and manage generated images/videos
+- **Admin Panel**: User management and usage monitoring
+- **Responsive Design**: Works on desktop and mobile devices
 
-- **Image Generation**:
-  - Text-to-image generation with 4 outputs per prompt
-  - Support for multiple fal.ai models
-  - Modern, intuitive interface
+## Project Structure
 
-- **Usage Tracking**:
-  - Track API requests per user per month
-  - Monthly usage statistics
-  - Admin reporting dashboard
+```
+ai-image-generator/
+├── app/
+│   ├── models/         # Database models
+│   ├── routes/         # Route handlers
+│   ├── services/       # Business logic services
+│   ├── static/         # CSS, JS, images
+│   ├── templates/      # HTML templates
+│   └── utils/          # Utility functions
+├── scripts/
+│   ├── deployment/     # Deployment scripts
+│   └── utils/          # Utility scripts
+├── docs/               # Documentation
+├── migrations/         # Database migrations
+├── config.py           # Configuration
+├── run.py              # Application entry point
+└── requirements.txt    # Python dependencies
+```
 
-- **Administration**:
-  - User management (enable/disable/remove)
-  - Usage statistics and reports
-  - Admin user management
+## Setup Instructions
 
-- **Security**:
-  - Domain-restricted access
-  - Encrypted passwords
-  - Session management
+### 1. Clone the Repository
 
-## Prerequisites
-
-- Python 3.11+ (Python 3.13 supported)
-- PostgreSQL database
-- fal.ai API key
-- Google OAuth 2.0 credentials
-
-## Local Setup
-
-1. Clone the repository:
 ```bash
-git clone https://github.com/rpriscu/ai-image-generator.git
+git clone <repository-url>
 cd ai-image-generator
 ```
 
-2. Create and activate a virtual environment:
+### 2. Create Virtual Environment
+
 ```bash
 python -m venv venv
 source venv/bin/activate  # On Windows: venv\Scripts\activate
 ```
 
-3. Install dependencies:
+### 3. Install Dependencies
+
 ```bash
 pip install -r requirements.txt
 ```
 
-4. Create a `.env` file in the project root with the following variables:
+**Note for Python 3.13 users**: Run the compatibility script:
+```bash
+python scripts/utils/downgrade_for_python_3_13.py
 ```
-# Flask configuration
-SECRET_KEY=your_secret_key_here
-FLASK_ENV=development  # Change to 'production' for production
 
-# Database configuration
+### 4. Set Environment Variables
+
+Create a `.env` file in the root directory:
+
+```env
+# Required
+SECRET_KEY=your-secret-key
+FAL_KEY=your-fal-api-key
 DATABASE_URL=postgresql://username:password@localhost/dbname
 
-# fal.ai API configuration
-FAL_KEY=your_fal_api_key_here
-
-# Google OAuth configuration
-GOOGLE_CLIENT_ID=your_google_client_id
-GOOGLE_CLIENT_SECRET=your_google_client_secret
-
-# Initial admin user (will be created on first run)
-ADMIN_USERNAME=admin
-ADMIN_PASSWORD=secure_password_here
+# Google OAuth (optional)
+GOOGLE_CLIENT_ID=your-google-client-id
+GOOGLE_CLIENT_SECRET=your-google-client-secret
 ```
 
-5. Initialize the database:
+### 5. Initialize Database
+
 ```bash
-# Create database tables
-python setup_db.py --init
+# Create database
+python scripts/utils/setup_db.py
 
-# Create admin user
-python setup_db.py --create-admin
+# Run migrations
+flask db upgrade
 ```
 
-6. Run the application:
+### 6. Run the Application
+
 ```bash
 python run.py
 ```
 
 The application will be available at `http://localhost:8080`
 
-## Environment Variables
+## Available Models
 
-| Variable | Description | Required | Default |
-|----------|-------------|----------|---------|
-| `SECRET_KEY` | Flask secret key for session encryption | Yes (in production) | dev-key-change-in-production |
-| `FLASK_ENV` | Environment (development/production) | No | development |
-| `DATABASE_URL` | Database connection URL | Yes | sqlite:///dev.db (in development) |
-| `FAL_KEY` | fal.ai API key | Yes | None |
-| `GOOGLE_CLIENT_ID` | Google OAuth client ID | Yes | None |
-| `GOOGLE_CLIENT_SECRET` | Google OAuth client secret | Yes | None |
-| `ALLOWED_EMAIL_DOMAIN` | Email domain for Google login | No | zemingo.com |
-| `ADMIN_USERNAME` | Initial admin username | Yes | None |
-| `ADMIN_PASSWORD` | Initial admin password | Yes | None |
-| `HOST` | Host to run development server on | No | 0.0.0.0 |
-| `PORT` | Port to run development server on | No | 8080 |
-| `PYTHONANYWHERE_DOMAIN` | Domain for PythonAnywhere | No | rpriscu.pythonanywhere.com |
-| `HEROKU_APP_NAME` | Heroku app name for URL generation | Yes (on Heroku) | None |
+1. **FLUX [dev]** - High-quality text-to-image generation
+2. **Recraft V3** - Style-consistent image generation
+3. **Stable Video** - Image-to-video conversion
+4. **FLUX [pro] Fill** - Advanced inpainting/outpainting
+
+## API Endpoints
+
+### User Routes
+- `GET /` - Landing page
+- `GET /register` - Registration page
+- `GET /login` - Login page
+- `GET /dashboard` - Main generator interface
+- `GET /gallery` - User's generated assets
+
+### API Routes
+- `POST /api/generate` - Generate new assets
+- `GET /api/assets` - List user's assets
+- `DELETE /api/assets/<id>` - Delete an asset
+- `GET /api/model-info/<model_id>` - Get model information
+
+### Admin Routes
+- `GET /admin` - Admin dashboard
+- `POST /admin/users/<id>/toggle-status` - Enable/disable user
+- `POST /admin/users/<id>/reset-usage` - Reset user's monthly usage
+
+## Development
+
+### Running Tests
+
+```bash
+python -m pytest tests/
+```
+
+### Code Style
+
+The project uses Black for code formatting:
+
+```bash
+black .
+```
+
+### Database Migrations
+
+Create a new migration:
+```bash
+flask db migrate -m "Description of changes"
+flask db upgrade
+```
 
 ## Deployment
 
-### Deploying to PythonAnywhere
+### Heroku Deployment
 
-For detailed PythonAnywhere deployment instructions, please see the [PythonAnywhere Deployment Guide](deployment_guide.md).
-
-Quick steps:
-
-1. Clone the repository on PythonAnywhere
-2. Set up a virtual environment and install dependencies
-3. Configure the web app settings in PythonAnywhere
-4. Set up the database
-5. Update the WSGI file
-6. Reload the web app
-
-### Deploying to Heroku
-
-For detailed Heroku deployment instructions, please see the [Heroku Deployment Guide](heroku_deployment_guide.md).
-
-Quick steps:
-
-1. Create a Heroku account and install the Heroku CLI
-2. Create a new Heroku app: `heroku create your-app-name`
-3. Set up environment variables
-4. Provision a PostgreSQL database: `heroku addons:create heroku-postgresql:mini`
-5. Deploy your application: `git push heroku main`
-6. Initialize the database: 
-   ```
-   heroku run python setup_db.py --init
-   heroku run python setup_db.py --create-admin
-   ```
-
-You can also deploy directly from GitHub:
-
-1. Push your code to GitHub
-2. Connect your GitHub repository in the Heroku dashboard
-3. Enable automatic deployments
-
-## Database Management
-
-The application comes with a database management utility (`setup_db.py`) that can perform the following operations:
-
-- Initialize database tables: `python setup_db.py --init`
-- Create admin user: `python setup_db.py --create-admin`
-- List all users: `python setup_db.py --list-users`
-- Reset database (drop all tables and recreate): `python setup_db.py --drop --init`
-
-For help on available commands, run: `python setup_db.py`
-
-## Project Structure
-
+1. Create a Heroku app:
+```bash
+heroku create your-app-name
 ```
-ai-image-generator/
-├── app/                      # Main application package
-│   ├── __init__.py           # Application factory
-│   ├── models/               # Database models
-│   ├── routes/               # Route blueprints
-│   │   ├── auth_routes.py    # Authentication routes
-│   │   ├── admin_routes.py   # Admin panel routes
-│   │   └── user_routes.py    # User-facing routes
-│   ├── services/             # Service modules
-│   │   ├── fal_api.py        # fal.ai API service
-│   │   ├── google_auth.py    # Google OAuth service
-│   │   └── usage_tracker.py  # Usage tracking service
-│   ├── templates/            # Jinja2 templates
-│   ├── static/               # Static assets
-│   └── utils/                # Utility modules
-│       ├── db_config.py      # Database configuration utilities
-│       └── cleanup.py        # Cleanup utilities
-├── migrations/               # Database migrations
-├── .python-version           # Python version specification
-├── app.json                  # Heroku app definition
-├── config.py                 # Application configuration
-├── deployment_guide.md       # PythonAnywhere deployment guide
-├── heroku_deployment_guide.md # Heroku deployment guide
-├── Procfile                  # Heroku process file
-├── requirements.txt          # Project dependencies
-├── run.py                    # Application entry point
-├── setup_db.py               # Database setup script
-└── README.md                 # Project documentation
+
+2. Set environment variables:
+```bash
+heroku config:set SECRET_KEY=your-secret-key
+heroku config:set FAL_KEY=your-fal-api-key
 ```
+
+3. Deploy:
+```bash
+git push heroku main
+```
+
+4. Initialize database:
+```bash
+heroku run python scripts/utils/create_tables.py
+```
+
+## Architecture
+
+The application follows a modular architecture:
+
+- **Models**: SQLAlchemy database models
+- **Services**: Business logic layer (auth, image processing, etc.)
+- **Routes**: HTTP request handlers
+- **Templates**: Jinja2 HTML templates
+- **Static**: Frontend assets (CSS, JS, images)
+
+Key design patterns:
+- Service layer pattern for business logic
+- Repository pattern for database access
+- Factory pattern for app creation
+- Handler pattern for model-specific logic
+
+## Security
+
+- Environment variables for sensitive data
+- CSRF protection enabled
+- Secure session handling
+- Input validation and sanitization
+- Rate limiting on API endpoints
+
+## Contributing
+
+1. Fork the repository
+2. Create a feature branch
+3. Make your changes
+4. Add tests if applicable
+5. Submit a pull request
 
 ## License
 
-MIT 
+This project is licensed under the MIT License.
+
+## Support
+
+For issues and questions:
+- Check the [documentation](docs/)
+- Open an issue on GitHub
+- Contact the development team 

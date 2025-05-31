@@ -122,10 +122,46 @@
         background-color: rgba(187, 134, 252, 0.1);
     }
     
+    .action-button.loading {
+        position: relative;
+        color: transparent !important;
+        pointer-events: none;
+    }
+    
+    .action-button.loading i {
+        display: none;
+    }
+    
+    .action-button.loading::after {
+        content: "";
+        position: absolute;
+        width: 20px;
+        height: 20px;
+        top: calc(50% - 10px);
+        left: calc(50% - 10px);
+        border: 2px solid rgba(255,255,255,0.3);
+        border-radius: 50%;
+        border-top-color: white;
+        animation: rotate 1s infinite linear;
+    }
+    
+    @keyframes rotate {
+        to { transform: rotate(360deg); }
+    }
+    
     @media (max-width: 968px) {
         .asset-detail-container {
             flex-direction: column;
         }
+    }
+    
+    .action-button.video {
+        background-color: #2288ff;
+        color: white;
+    }
+    
+    .action-button.video:hover {
+        background-color: #22aaff;
     }
 </style>
 {% endblock %}
@@ -181,6 +217,10 @@
                     data-model="{{ asset.model }}">
                 <i class="fas fa-sync"></i> Regenerate
             </button>
+            <button id="videoGenBtn" class="action-button video" 
+                    data-image-url="{{ asset.file_url }}">
+                <i class="fas fa-film"></i> Generate Video
+            </button>
         </div>
     </div>
 </div>
@@ -190,41 +230,92 @@
 <script>
     document.addEventListener('DOMContentLoaded', function() {
         const regenerateBtn = document.getElementById('regenerateBtn');
+        const videoGenBtn = document.getElementById('videoGenBtn');
         
         if (regenerateBtn) {
             regenerateBtn.addEventListener('click', function() {
+                // Show loading state
+                this.classList.add('loading');
+                
                 const prompt = this.dataset.prompt;
                 const imageUrl = this.dataset.imageUrl;
                 const modelName = this.dataset.model.toLowerCase();
                 
-                // Check if the model supports reference images
-                const supportsReferenceImage = 
-                    modelName.includes('flux') || 
-                    modelName.includes('stable diffusion') || 
-                    modelName.includes('sd');
+                console.log('Regenerating with:', {
+                    prompt,
+                    imageUrl,
+                    modelName
+                });
                 
                 // Create URL to dashboard with prompt parameter
                 let dashboardUrl = "{{ url_for('user.dashboard') }}?prompt=" + encodeURIComponent(prompt);
                 
-                // If model supports reference images, we'll need to store the image URL in localStorage
-                // because we can't directly set a file input's value for security reasons
+                // Determine if model supports reference images
+                const supportsReferenceImage = 
+                    modelName.includes('flux') || 
+                    modelName.includes('stable') || 
+                    modelName.includes('sd');
+                
+                // Determine correct model parameter
+                let modelParam;
+                if (modelName.includes('flux_pro')) {
+                    modelParam = 'flux_pro';
+                } else if (modelName.includes('flux')) {
+                    modelParam = 'flux';
+                } else if (modelName.includes('stable_video')) {
+                    modelParam = 'stable_video';
+                } else if (modelName.includes('stable_diffusion') || modelName.includes('sd')) {
+                    modelParam = 'stable_diffusion';
+                } 
+                
+                // Add model parameter if we identified one
+                if (modelParam) {
+                    dashboardUrl += '&model=' + modelParam;
+                }
+                
+                // Store the reference image URL in localStorage and add flag to use it
                 if (supportsReferenceImage && imageUrl) {
-                    // Store image URL in localStorage to be read by dashboard page
-                    localStorage.setItem('referenceImageUrl', imageUrl);
-                    
-                    // Add a flag to indicate we should use reference image
-                    dashboardUrl += '&useReferenceImage=true';
-                    
-                    // Set the model if we know which specific model it is
-                    if (modelName.includes('flux')) {
-                        dashboardUrl += '&model=flux';
-                    } else if (modelName.includes('stable diffusion') || modelName.includes('sd')) {
-                        dashboardUrl += '&model=stable_diffusion';
+                    try {
+                        localStorage.setItem('referenceImageUrl', imageUrl);
+                        dashboardUrl += '&useReferenceImage=true';
+                    } catch (e) {
+                        console.error('Failed to store reference image URL in localStorage:', e);
                     }
                 }
                 
-                // Navigate to dashboard
-                window.location.href = dashboardUrl;
+                // Add a small delay to show loading state before navigating
+                setTimeout(() => {
+                    // Navigate to dashboard
+                    window.location.href = dashboardUrl;
+                }, 300);
+            });
+        }
+        
+        if (videoGenBtn) {
+            videoGenBtn.addEventListener('click', function() {
+                // Show loading state
+                this.classList.add('loading');
+                
+                const imageUrl = this.dataset.imageUrl;
+                
+                console.log('Generating video from image:', imageUrl);
+                
+                // Create URL to dashboard with stable_video model selected
+                let dashboardUrl = "{{ url_for('user.dashboard') }}?model=stable_video";
+                
+                // Store the reference image URL in localStorage and add flag to use it
+                try {
+                    localStorage.setItem('referenceImageUrl', imageUrl);
+                    dashboardUrl += '&useReferenceImage=true';
+                } catch (e) {
+                    console.error('Failed to store reference image URL in localStorage:', e);
+                }
+                
+                // Add a small delay to show loading state before navigating
+                setTimeout(() => {
+                    // Navigate to dashboard
+                    window.location.href = dashboardUrl;
+                }, 300);
             });
         }
     });

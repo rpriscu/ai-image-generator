@@ -4,635 +4,8 @@
 
 {% block head %}
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}">
 <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
-<style>
-    .generator-container {
-        display: flex;
-        flex-direction: column;
-        gap: 30px;
-        margin-top: 10px;
-    }
-    
-    .form-section {
-        background-color: var(--surface);
-        border-radius: 8px;
-        padding: 25px;
-        box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
-    }
-    
-    .prompt-form {
-        display: flex;
-        flex-direction: column;
-        gap: 20px;
-    }
-    
-    .form-group {
-        display: flex;
-        flex-direction: column;
-        gap: 10px;
-    }
-    
-    label {
-        font-weight: 500;
-    }
-    
-    textarea {
-        background-color: var(--surface-light);
-        border: 1px solid #333;
-        border-radius: 4px;
-        padding: 12px;
-        color: var(--text);
-        font-family: 'Rubik', sans-serif;
-        font-size: 16px;
-        resize: vertical;
-        min-height: 100px;
-    }
-    
-    .model-select {
-        display: flex;
-        gap: 15px;
-        flex-wrap: wrap;
-    }
-    
-    .model-option {
-        background-color: var(--surface-light);
-        border: 2px solid transparent;
-        border-radius: 6px;
-        padding: 15px;
-        cursor: pointer;
-        flex: 1;
-        min-width: 200px;
-        transition: border-color 0.2s, transform 0.2s;
-    }
-    
-    .model-option:hover {
-        transform: translateY(-2px);
-    }
-    
-    .model-option.selected {
-        border-color: var(--primary-light);
-    }
-    
-    .model-option::after {
-        display: none;
-    }
-    
-    .model-name {
-        font-weight: 600;
-        margin-bottom: 5px;
-        display: flex;
-        align-items: center;
-    }
-    
-    .info-icon {
-        margin-left: 8px;
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        cursor: pointer;
-        transition: all 0.2s ease;
-        width: 16px;
-        height: 16px;
-        border-radius: 50%;
-        background-color: var(--primary-light);
-        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
-    }
-    
-    .info-icon:after {
-        content: 'i';
-        color: white;
-        font-size: 10px;
-        font-weight: 600;
-        font-family: Arial, sans-serif;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        width: 100%;
-        height: 100%;
-    }
-    
-    .info-icon:hover {
-        background-color: var(--primary);
-        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
-    }
-    
-    .premium-badge {
-        margin-left: 8px;
-        background-color: gold;
-        color: #333;
-        font-size: 10px;
-        padding: 2px 6px;
-        border-radius: 10px;
-        font-weight: bold;
-        text-transform: uppercase;
-    }
-    
-    .model-description {
-        font-size: 14px;
-        color: var(--text-secondary);
-    }
-    
-    /* File upload styles */
-    .file-upload-wrapper {
-        position: relative;
-        width: 100%;
-        margin-top: 5px;
-    }
-    
-    .file-upload-input {
-        position: absolute;
-        left: 0;
-        top: 0;
-        width: 100%;
-        height: 100%;
-        opacity: 0;
-        cursor: pointer;
-        z-index: 2;
-    }
-    
-    .file-upload-label {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        padding: 10px 15px;
-        background-color: var(--surface-light);
-        border: 1px dashed #555;
-        border-radius: 4px;
-        cursor: pointer;
-        transition: all 0.2s;
-    }
-    
-    .file-upload-text {
-        color: var(--text-secondary);
-        flex-grow: 1;
-    }
-    
-    .file-upload-button {
-        background-color: var(--primary);
-        color: white;
-        padding: 6px 12px;
-        border-radius: 4px;
-        font-size: 14px;
-    }
-    
-    .file-hint {
-        font-size: 13px;
-        color: var(--text-secondary);
-        margin-top: 8px;
-    }
-    
-    /* Stable Diffusion Parameters Styles */
-    .sd-params-grid {
-        display: flex;
-        gap: 30px;
-        margin-top: 10px;
-    }
-    
-    .sd-params-column {
-        flex: 1;
-        display: flex;
-        flex-direction: column;
-        gap: 20px;
-    }
-    
-    /* Make right column sliders start at the same vertical position as the negative prompt */
-    .sd-params-column:last-child {
-        padding-top: 0;
-        justify-content: space-between;
-    }
-    
-    /* Slider specific styling */
-    .slider-column {
-        display: flex;
-        flex-direction: column;
-        justify-content: space-between;
-    }
-    
-    .slider-group {
-        margin-bottom: 15px;
-    }
-    
-    .slider-group:last-child {
-        margin-bottom: 0;
-    }
-    
-    .slider-container {
-        display: flex;
-        align-items: center;
-        gap: 10px;
-        position: relative;
-        margin-bottom: 15px;
-    }
-    
-    .slider-container input[type="range"] {
-        flex: 1;
-    }
-    
-    .slider-container .param-value {
-        width: 45px;
-        text-align: right;
-        font-weight: 600;
-        color: #9c4dff;
-        font-size: 16px;
-    }
-    
-    .param-group {
-        display: flex;
-        flex-direction: column;
-        gap: 6px;
-    }
-    
-    .param-group label {
-        font-size: 14px;
-        color: var(--text-secondary);
-    }
-    
-    .param-group textarea {
-        min-height: 90px;
-        font-size: 14px;
-    }
-    
-    .param-group input[type="number"] {
-        background-color: var(--surface-light);
-        border: 1px solid #333;
-        border-radius: 4px;
-        padding: 10px 12px;
-        color: var(--text);
-        font-family: 'Rubik', sans-serif;
-        font-size: 14px;
-        width: 100%;
-        box-sizing: border-box;
-    }
-    
-    .param-group input[type="range"] {
-        width: 100%;
-        background-color: var(--surface-light);
-        height: 6px;
-        border-radius: 3px;
-        outline: none;
-        -webkit-appearance: none;
-        margin: 12px 0 8px; /* Reduce margins to make sliders more compact */
-    }
-    
-    /* Replace with solid triangle thumbs */
-    .param-group input[type="range"]::-webkit-slider-thumb {
-        -webkit-appearance: none;
-        width: 0; 
-        height: 0; 
-        border-left: 8px solid transparent;
-        border-right: 8px solid transparent;
-        border-bottom: 14px solid var(--primary);
-        background-color: transparent; /* Ensure it's transparent */
-        cursor: pointer;
-        position: relative;
-        top: -8px; /* Adjust to center on track */
-        filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.3));
-    }
-    
-    /* Firefox support for triangle sliders */
-    .param-group input[type="range"]::-moz-range-thumb {
-        width: 0;
-        height: 0;
-        border: none;
-        border-left: 8px solid transparent;
-        border-right: 8px solid transparent;
-        border-bottom: 14px solid var(--primary);
-        background-color: var(--primary); /* Firefox needs this */
-        border-radius: 0;
-        cursor: pointer;
-        filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.3));
-        transform: translateY(-2px); /* Raise it in Firefox */
-    }
-    
-    /* Firefox track styling */
-    .param-group input[type="range"]::-moz-range-track {
-        height: 6px;
-        border-radius: 3px;
-        background: var(--surface-light);
-        border: 1px solid #444;
-    }
-    
-    .param-value {
-        font-size: 14px;
-        color: var(--primary-light);
-        text-align: right;
-        font-weight: 500;
-        margin-top: 2px;
-    }
-    
-    /* Style the slider track for better visibility */
-    .param-group input[type="range"]::-webkit-slider-runnable-track {
-        height: 6px;
-        border-radius: 3px;
-        background: var(--surface-light);
-        border: 1px solid #444;
-    }
-    
-    .preview-container {
-        position: relative;
-        margin-top: 10px;
-    }
-    
-    .remove-btn {
-        position: absolute;
-        top: 5px;
-        right: 5px;
-        width: 24px;
-        height: 24px;
-        border-radius: 50%;
-        background: rgba(0,0,0,0.7);
-        color: white;
-        border: none;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        cursor: pointer;
-        font-size: 12px;
-    }
-    
-    .form-actions {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        margin-top: 10px;
-    }
-    
-    .generate-btn {
-        background-color: var(--primary);
-        color: white;
-        border: none;
-        border-radius: 4px;
-        padding: 12px 25px;
-        font-size: 16px;
-        font-weight: 500;
-        cursor: pointer;
-        transition: background-color 0.2s;
-    }
-    
-    .generate-btn:hover {
-        background-color: #7722ff;
-    }
-    
-    .generate-btn:disabled {
-        background-color: #555;
-        cursor: not-allowed;
-    }
-    
-    .usage-info {
-        color: var(--text-secondary);
-        font-size: 14px;
-    }
-    
-    .results-section {
-        background-color: var(--surface);
-        border-radius: 8px;
-        padding: 25px;
-        box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
-    }
-    
-    .results-section h2 {
-        margin-top: 0;
-        margin-bottom: 20px;
-    }
-    
-    .image-grid {
-        display: grid;
-        grid-template-columns: repeat(2, 1fr);
-        gap: 20px;
-        margin-top: 20px;
-    }
-    
-    .image-result {
-        position: relative;
-        background-color: var(--surface-light);
-        border-radius: 8px;
-        overflow: hidden;
-        aspect-ratio: 16 / 9;
-        box-shadow: 0 3px 8px rgba(0, 0, 0, 0.2);
-        transition: transform 0.2s, box-shadow 0.2s;
-    }
-    
-    .image-result:hover {
-        transform: translateY(-5px);
-        box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
-    }
-    
-    .image-result img {
-        width: 100%;
-        height: 100%;
-        object-fit: cover;
-        display: block;
-    }
-    
-    .image-result.loading {
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        min-height: 200px;
-        background: linear-gradient(-45deg, var(--surface-light) 25%, var(--surface) 50%, var(--surface-light) 75%);
-        background-size: 400% 400%;
-        animation: shimmer 2s infinite;
-    }
-    
-    .loading-spinner {
-        width: 40px;
-        height: 40px;
-        border: 3px solid rgba(255, 255, 255, 0.3);
-        border-radius: 50%;
-        border-top-color: var(--primary);
-        animation: spin 1s ease-in-out infinite;
-    }
-    
-    @keyframes spin {
-        to { transform: rotate(360deg); }
-    }
-    
-    .image-actions {
-        position: absolute;
-        bottom: 0;
-        left: 0;
-        right: 0;
-        background-color: rgba(0, 0, 0, 0.6);
-        display: flex;
-        justify-content: flex-end;
-        padding: 8px 12px;
-        transform: translateY(100%);
-        transition: transform 0.3s ease;
-    }
-    
-    .image-result:hover .image-actions {
-        transform: translateY(0);
-    }
-    
-    .download-btn, .delete-btn, .refine-btn {
-        background: none;
-        border: none;
-        color: white;
-        font-size: 16px;
-        cursor: pointer;
-        margin-left: 15px;
-        padding: 5px;
-        border-radius: 3px;
-        transition: background-color 0.2s;
-    }
-    
-    .download-btn:hover {
-        background-color: var(--primary);
-    }
-    
-    .delete-btn:hover {
-        background-color: #f44336;
-    }
-    
-    .refine-btn:hover {
-        background-color: #4CAF50;
-    }
-    
-    .refine-btn {
-        margin-left: 0; /* First button doesn't need left margin */
-    }
-    
-    .error-message {
-        background-color: rgba(244, 67, 54, 0.1);
-        color: #f44336;
-        padding: 12px 15px;
-        border-radius: 4px;
-        margin: 20px 0;
-        text-align: center;
-    }
-    
-    .warning-message {
-        background-color: rgba(255, 152, 0, 0.1);
-        color: #ff9800;
-        padding: 12px 15px;
-        border-radius: 4px;
-        margin: 20px 0;
-        text-align: left;
-    }
-    
-    .warning-message h4 {
-        margin-top: 0;
-        margin-bottom: 10px;
-        font-size: 16px;
-    }
-    
-    .warning-message ul {
-        margin: 10px 0;
-        padding-left: 20px;
-    }
-    
-    .warning-message p {
-        margin-bottom: 0;
-        font-size: 14px;
-    }
-    
-    @keyframes shimmer {
-        0% { background-position: 0% 50%; }
-        50% { background-position: 100% 50%; }
-        100% { background-position: 0% 50%; }
-    }
-    
-    .no-results {
-        text-align: center;
-        color: var(--text-secondary);
-        padding: 40px 0;
-    }
-    
-    @media (max-width: 768px) {
-        .image-grid {
-            grid-template-columns: 1fr;
-        }
-    }
-    
-    /* Modal styles */
-    .model-info-modal {
-        display: none;
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        background-color: rgba(0, 0, 0, 0.7);
-        z-index: 1000;
-        overflow-y: auto;
-    }
-    
-    .modal-content {
-        background-color: var(--surface);
-        margin: 50px auto;
-        padding: 25px;
-        border-radius: 8px;
-        width: 90%;
-        max-width: 700px;
-        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
-        position: relative;
-        max-height: 80vh;
-        overflow-y: auto;
-    }
-    
-    .close-modal {
-        position: absolute;
-        top: 15px;
-        right: 20px;
-        font-size: 24px;
-        color: var(--text-secondary);
-        cursor: pointer;
-        transition: color 0.2s;
-    }
-    
-    .close-modal:hover {
-        color: var(--text);
-    }
-    
-    .model-info-content h2 {
-        margin-top: 0;
-        margin-bottom: 20px;
-        color: var(--primary-light);
-        font-size: 28px;
-    }
-    
-    .info-section {
-        margin-bottom: 25px;
-        line-height: 1.6;
-    }
-    
-    .info-section h3 {
-        margin-top: 0;
-        margin-bottom: 10px;
-        color: var(--text);
-    }
-    
-    .info-section p {
-        margin-bottom: 10px;
-        line-height: 1.6;
-    }
-    
-    .info-section ul {
-        padding-left: 20px;
-        margin-bottom: 10px;
-    }
-    
-    .info-section li {
-        margin-bottom: 8px;
-    }
-    
-    /* Emoji styling */
-    .info-section br + br {
-        content: '';
-        display: block;
-        margin-top: 15px;
-    }
-    
-    /* Highlight sections with emoji headers */
-    .info-section br:first-child {
-        display: none;
-    }
-    
-    /* Style list markers */
-    .info-section:not(h3) {
-        font-size: 16px;
-    }
-</style>
 {% endblock %}
 
 {% block content %}
@@ -642,24 +15,26 @@
 
 {% if not api_configured %}
 <div class="flash-message flash-error">
-    <strong>API Not Configured:</strong> The FAL API key is not set up. Please contact the administrator to configure the API key for image generation to work.
+    <strong>API Not Configured:</strong> The FAL API key is not set up. Please contact the administrator to configure the API key for asset generation to work.
 </div>
 {% endif %}
 
 <div class="generator-container">
     <div class="form-section">
         <form id="promptForm" class="prompt-form" enctype="multipart/form-data">
-            <div class="form-group">
+            <div class="form-group" id="promptSection">
                 <label for="prompt">Describe what you want to see in detail:</label>
-                <textarea id="prompt" name="prompt" required 
+                <textarea id="prompt" name="prompt" 
                     placeholder="e.g., A futuristic city skyline with flying cars and neon lights, photorealistic, detailed, 8k"></textarea>
+                <small id="promptNotRequired" style="display: none; color: #aaa;">
+                    This model doesn't require a prompt, only an input image.
+                </small>
             </div>
             
-            <!-- Make image upload visible by default for Stable Diffusion -->
-            <div class="form-group" id="imageUploadSection">
-                <label for="referenceImage">Reference Image (Optional):</label>
+            <div class="form-group" id="imageUploadSection" style="display: none;">
+                <label for="image" id="imageUploadLabel">Reference Image <span id="optionalImageText">(Optional)</span>:</label>
                 <div class="file-upload-wrapper">
-                    <input type="file" id="referenceImage" name="image" accept="image/*" class="file-upload-input">
+                    <input type="file" id="image" name="image" accept="image/*" class="file-upload-input">
                     <div class="file-upload-label">
                         <span class="file-upload-text">Choose an image...</span>
                         <span class="file-upload-button">Browse</span>
@@ -672,7 +47,6 @@
                 <p class="file-hint">For image-to-image generation, you can upload a reference image to guide the model.</p>
             </div>
             
-            <!-- Mask upload section for Flux.1 [pro] Fill -->
             <div class="form-group" id="maskUploadSection" style="display: none;">
                 <label for="maskImage">Mask Image (Required for Fill):</label>
                 <div class="file-upload-wrapper">
@@ -696,7 +70,7 @@
                 </small>
             </div>
             
-            <div class="form-group" id="sdParamsSection">
+            <div class="form-group" id="sdParamsSection" style="display: none;">
                 <label>Stable Diffusion Parameters:</label>
                 <div class="sd-params-grid">
                     <!-- Left column: Negative prompt and other text inputs -->
@@ -761,20 +135,20 @@
             </div>
             
             <div class="form-actions">
-                <button type="submit" id="generateBtn" class="generate-btn">Generate 4 Images</button>
+                <button type="submit" id="generateBtn" class="generate-btn">Generate 4 Assets</button>
                 <div class="usage-info">
-                    Your usage this month: <strong>{{ current_usage }}</strong> images
+                    Your usage this month: <strong>{{ current_usage }}</strong> assets
                 </div>
             </div>
         </form>
     </div>
     
     <div class="results-section">
-        <h2>Generated Images</h2>
+        <h2>Generated Assets</h2>
         
         <div id="results" class="image-grid">
             <div class="no-results">
-                Enter a prompt above and click "Generate" to create images
+                Enter a prompt above and click "Generate" to create assets
             </div>
         </div>
     </div>
@@ -793,198 +167,165 @@
 {% endblock %}
 
 {% block scripts %}
+<!-- Include the Model UI Manager -->
+<script src="{{ url_for('static', filename='js/model-ui-manager.js') }}"></script>
+<!-- Include the Dashboard API module -->
+<script src="{{ url_for('static', filename='js/dashboard-api.js') }}"></script>
+<!-- Include the Generation State Manager -->
+<script src="{{ url_for('static', filename='js/generation-state-manager.js') }}"></script>
+<!-- Include the Progress Recovery Manager -->
+<script src="{{ url_for('static', filename='js/progress-recovery-manager.js') }}"></script>
+
 <script>
-    // Make modelData available directly without parsing JSON
-    let modelData = {
-        {% for model_id, model in models.items() %}
-            '{{ model_id }}': {
-                name: '{{ model.name }}',
-                type: '{{ model.type if model.type else "text-to-image" }}',
-                supports_image_input: {{ 'true' if model.supports_image_input else 'false' }}
-                {%- if model.description %}, description: '{{ model.description|safe }}'{% endif %}
-            }{% if not loop.last %},{% endif %}
-        {% endfor %}
-    };
+    // Model configurations from backend - passed as JSON
+    const modelConfigs = {{ models | tojson | safe }};
     
-    // Ensure FLUX and Stable Diffusion have image upload support
-    if (modelData.flux) {
-        modelData.flux.supports_image_input = true;
-    }
-    if (modelData.stable_diffusion) {
-        modelData.stable_diffusion.supports_image_input = true;
-        modelData.stable_diffusion.type = 'hybrid';
-    }
+    // Initialize the UI manager
+    const uiManager = new ModelUIManager(modelConfigs);
     
-    console.log('Model data loaded directly:', Object.keys(modelData));
+    // Initialize the state management system
+    const stateManager = new GenerationStateManager();
+    const progressRecovery = new ProgressRecoveryManager(stateManager, uiManager);
     
-    // Define these functions before they're used in HTML
-    // Simple direct model selection function
+    // Global reference for other functions
+    window.stateManager = stateManager;
+    window.progressRecovery = progressRecovery;
+    
+    // Simplified model selection function
     function selectModel(modelId, isPro, element) {
         try {
-            console.log(`Selecting model directly: ${modelId}, isPro: ${isPro}`);
-            
-            // Update UI
+            // Update selected UI
             document.querySelectorAll('.model-option').forEach(el => el.classList.remove('selected'));
             element.classList.add('selected');
             
-            // Update button text
-            const generateBtn = document.getElementById('generateBtn');
-            if (isPro) {
-                generateBtn.textContent = 'Generate 1 Premium Image';
-            } else {
-                generateBtn.textContent = 'Generate 4 Images';
-            }
+            // Use UI manager to update interface
+            uiManager.updateUI(modelId);
             
-            // Update UI sections
-            const imageUploadSection = document.getElementById('imageUploadSection');
-            const maskUploadSection = document.getElementById('maskUploadSection');
-            const sdParamsSection = document.getElementById('sdParamsSection');
-            
-            // Default: hide all sections
-            imageUploadSection.style.display = 'none';
-            maskUploadSection.style.display = 'none';
-            sdParamsSection.style.display = 'none';
-            
-            // Special handling for Stable Diffusion
-            if (modelId === 'stable_diffusion') {
-                imageUploadSection.style.display = 'block';
-                sdParamsSection.style.display = 'block';
-                console.log('Showing Stable Diffusion UI components');
-            } 
-            // FLUX.1 [pro] Fill needs both image and mask
-            else if (modelId === 'flux_pro') {
-                imageUploadSection.style.display = 'block';
-                maskUploadSection.style.display = 'block';
-                console.log('Showing FLUX.1 [pro] Fill UI components');
-            }
-            // FLUX.1 should also show image upload
-            else if (modelId === 'flux') {
-                imageUploadSection.style.display = 'block';
-                console.log('Showing image upload for FLUX.1');
-            }
-            // Check model data for other models that support image input
-            else if (modelData && modelData[modelId] && 
-                    (modelData[modelId].type === 'hybrid' || 
-                    modelData[modelId].type === 'image-to-image' || 
-                    modelData[modelId].supports_image_input === true)) {
-                imageUploadSection.style.display = 'block';
-                console.log(`Showing image upload for model: ${modelId}`);
-            }
         } catch (error) {
             console.error('Error in selectModel:', error);
         }
     }
     
     // Show model info in modal
-    function showModelInfo(modelId) {
+    async function showModelInfo(modelId) {
         try {
             console.log(`Showing info for model: ${modelId}`);
             
-            // Fetch model info from server
-            fetch(`/api/model-info/${modelId}`)
-                .then(response => response.json())
-                .then(data => {
-                    if (data && data.name) {
-                        // Set modal content
-                        document.getElementById('modalModelName').textContent = data.name;
-                        
-                        // Build content sections
-                        let contentHTML = '';
-                        
-                        if (data.info.what_is) {
-                            contentHTML += `<div class="info-section">
-                                ${data.info.what_is.replace(/\n/g, '<br>')}
-                            </div>`;
-                        }
-                        
-                        if (data.info.use_cases) {
-                            contentHTML += `<div class="info-section">
-                                ${data.info.use_cases.replace(/\n/g, '<br>')}
-                            </div>`;
-                        }
-                        
-                        if (data.info.tips) {
-                            contentHTML += `<div class="info-section">
-                                ${data.info.tips.replace(/\n/g, '<br>')}
-                            </div>`;
-                        }
-                        
-                        // Set HTML content directly to render links
-                        document.getElementById('modalModelContent').innerHTML = contentHTML;
-                        
-                        // Style links
-                        document.getElementById('modalModelContent').querySelectorAll('a').forEach(link => {
-                            if (!link.hasAttribute('target')) {
-                                link.setAttribute('target', '_blank');
-                            }
-                            link.setAttribute('rel', 'noopener noreferrer');
-                            link.style.color = 'var(--primary-light)';
-                            link.style.textDecoration = 'underline';
-                            link.style.fontWeight = '500';
-                        });
-                        
-                        // Show modal
-                        document.getElementById('modelInfoModal').style.display = 'block';
+            // Use DashboardAPI to fetch model info
+            const data = await DashboardAPI.getModelInfo(modelId);
+            
+            if (data && data.name) {
+                // Set modal content
+                document.getElementById('modalModelName').textContent = data.name;
+                
+                // Build content sections
+                let contentHTML = '';
+                
+                if (data.info.what_is) {
+                    contentHTML += `<div class="info-section">
+                        ${data.info.what_is.replace(/\n/g, '<br>')}
+                    </div>`;
+                }
+                
+                if (data.info.use_cases) {
+                    contentHTML += `<div class="info-section">
+                        ${data.info.use_cases.replace(/\n/g, '<br>')}
+                    </div>`;
+                }
+                
+                if (data.info.tips) {
+                    contentHTML += `<div class="info-section">
+                        ${data.info.tips.replace(/\n/g, '<br>')}
+                    </div>`;
+                }
+                
+                // Set HTML content directly to render links
+                document.getElementById('modalModelContent').innerHTML = contentHTML;
+                
+                // Style links
+                document.getElementById('modalModelContent').querySelectorAll('a').forEach(link => {
+                    if (!link.hasAttribute('target')) {
+                        link.setAttribute('target', '_blank');
                     }
-                })
-                .catch(error => {
-                    console.error('Error fetching model info:', error);
+                    link.setAttribute('rel', 'noopener noreferrer');
+                    link.style.color = 'var(--primary-light)';
+                    link.style.textDecoration = 'underline';
+                    link.style.fontWeight = '500';
                 });
+                
+                // Show modal
+                document.getElementById('modelInfoModal').style.display = 'block';
+            }
         } catch (error) {
-            console.error('Error in showModelInfo:', error);
+            console.error('Error fetching model info:', error);
         }
     }
     
     // Function to set reference image
     async function setReferenceImage(imageUrl) {
         try {
-            console.log('Setting reference image from URL:', imageUrl);
+            console.log('[setReferenceImage] Starting with URL:', imageUrl);
             
             // Make sure image upload section is visible
             const imageUploadSection = document.getElementById('imageUploadSection');
-            imageUploadSection.style.display = 'block';
-            
-            // Fetch the image
-            const response = await fetch(imageUrl);
-            if (!response.ok) {
-                throw new Error(`Failed to fetch image: ${response.status} ${response.statusText}`);
+            if (!imageUploadSection) {
+                console.error('[setReferenceImage] Could not find imageUploadSection element');
+                return false;
             }
             
-            // Get the image as a blob
-            const blob = await response.blob();
+            console.log('[setReferenceImage] Setting imageUploadSection display:', 'block');
+            imageUploadSection.style.display = 'block';
             
-            // Create a File object from the blob
-            const filename = imageUrl.split('/').pop().split('?')[0] || 'reference-image.jpg';
-            const file = new File([blob], filename, { type: blob.type || 'image/jpeg' });
+            // Use DashboardAPI to load image as file
+            const file = await DashboardAPI.loadImageAsFile(imageUrl);
             
             // Create a DataTransfer object to set the file input value
+            console.log('[setReferenceImage] Creating DataTransfer object...');
             const dataTransfer = new DataTransfer();
             dataTransfer.items.add(file);
             
             // Set the file input value
-            const fileInput = document.getElementById('referenceImage');
+            const fileInput = document.getElementById('image');
+            if (!fileInput) {
+                console.error('[setReferenceImage] Could not find image input element');
+                return false;
+            }
+            
+            console.log('[setReferenceImage] Setting file input...');
             fileInput.files = dataTransfer.files;
             
             // Update the file text display
             const fileText = document.querySelector('.file-upload-text');
-            fileText.textContent = filename;
+            if (fileText) {
+                console.log('[setReferenceImage] Updating file text display...');
+                fileText.textContent = file.name;
+            }
             
             // Set the preview image
             const imagePreview = document.getElementById('imagePreview');
             const previewContainer = document.querySelector('.preview-container');
             
-            imagePreview.src = URL.createObjectURL(blob);
-            previewContainer.style.display = 'block';
+            if (imagePreview && previewContainer) {
+                console.log('[setReferenceImage] Setting preview image...');
+                const objectUrl = URL.createObjectURL(file);
+                imagePreview.src = objectUrl;
+                previewContainer.style.display = 'block';
+            }
             
-            console.log('Reference image set successfully');
+            console.log('[setReferenceImage] Reference image set successfully');
+            
+            // Dispatch change event
+            console.log('[setReferenceImage] Dispatching change event...');
+            const changeEvent = new Event('change', { bubbles: true });
+            fileInput.dispatchEvent(changeEvent);
+            
             return true;
         } catch (error) {
-            console.error('Error setting reference image:', error);
+            console.error('[setReferenceImage] Error:', error);
             return false;
         }
     }
     
-    // Close modal when clicking close button or outside
     document.addEventListener('DOMContentLoaded', function() {
         // Set up modal close handlers
         document.querySelector('.close-modal').addEventListener('click', function() {
@@ -1005,435 +346,597 @@
             });
         });
         
-        // Handle file input
-        const fileInput = document.getElementById('referenceImage');
-        if (fileInput) {
-            const previewContainer = document.querySelector('.preview-container');
-            const imagePreview = document.getElementById('imagePreview');
-            const fileText = document.querySelector('.file-upload-text');
-            
-            fileInput.addEventListener('change', function() {
-                if (this.files && this.files[0]) {
-                    fileText.textContent = this.files[0].name;
-                    
-                    const reader = new FileReader();
-                    reader.onload = function(e) {
-                        imagePreview.src = e.target.result;
-                        previewContainer.style.display = 'block';
-                    };
-                    reader.readAsDataURL(this.files[0]);
-                }
-            });
-            
-            // Handle removing the image
-            const removeBtn = document.getElementById('removeImageBtn');
-            if (removeBtn) {
-                removeBtn.addEventListener('click', function() {
-                    fileInput.value = '';
-                    fileText.textContent = 'Choose an image...';
-                    previewContainer.style.display = 'none';
-                });
+        // Handle file upload display for the main image
+        document.getElementById('image').addEventListener('change', function() {
+            const fileText = this.closest('.file-upload-wrapper').querySelector('.file-upload-text');
+            const previewContainer = this.closest('.form-group').querySelector('.preview-container');
+            const imagePreview = this.closest('.form-group').querySelector('img[id^="imagePreview"]'); // More robust selector
+            const removeBtn = this.closest('.form-group').querySelector('.remove-btn');
+
+            if (this.files && this.files[0]) {
+                const file = this.files[0];
+                fileText.textContent = file.name;
+                
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    imagePreview.src = e.target.result;
+                    previewContainer.style.display = 'block';
+                    if(removeBtn) removeBtn.style.display = 'inline-block';
+                };
+                reader.readAsDataURL(file);
+            } else {
+                fileText.textContent = 'Choose an image...';
+                imagePreview.src = '#';
+                previewContainer.style.display = 'none';
+                if(removeBtn) removeBtn.style.display = 'none';
             }
-        }
+        });
         
-        // Handle mask file input
+        // Handle file upload display for the mask image
         const maskInput = document.getElementById('maskImage');
         if (maskInput) {
-            const previewContainer = maskInput.closest('.form-group').querySelector('.preview-container');
-            const maskPreview = document.getElementById('maskPreview');
-            const fileText = maskInput.closest('.form-group').querySelector('.file-upload-text');
-            
             maskInput.addEventListener('change', function() {
+                const fileText = this.closest('.file-upload-wrapper').querySelector('.file-upload-text');
+                const previewContainer = this.closest('.form-group').querySelector('.mask-preview-container');
+                const maskPreview = this.closest('.form-group').querySelector('#maskPreview');
+                const removeBtn = this.closest('.form-group').querySelector('#removeMaskBtn');
+
                 if (this.files && this.files[0]) {
-                    fileText.textContent = this.files[0].name;
+                    const file = this.files[0];
+                    fileText.textContent = file.name;
                     
                     const reader = new FileReader();
                     reader.onload = function(e) {
                         maskPreview.src = e.target.result;
-                        previewContainer.style.display = 'block';
+                        maskPreview.style.display = 'block'; // Make sure preview img is visible
+                        if(previewContainer) previewContainer.style.display = 'block'; // Make sure container is visible
+                        if(removeBtn) removeBtn.style.display = 'inline-block';
                     };
-                    reader.readAsDataURL(this.files[0]);
-                }
-            });
-            
-            // Handle removing the mask image
-            const removeMaskBtn = document.getElementById('removeMaskBtn');
-            if (removeMaskBtn) {
-                removeMaskBtn.addEventListener('click', function() {
-                    maskInput.value = '';
+                    reader.readAsDataURL(file);
+                } else {
                     fileText.textContent = 'Choose a mask image...';
-                    previewContainer.style.display = 'none';
-                });
-            }
-        }
-        
-        // Handle form submission
-        const promptForm = document.getElementById('promptForm');
-        if (promptForm) {
-            promptForm.addEventListener('submit', function(e) {
-                e.preventDefault();
-                
-                // Get the selected model
-                const selectedOption = document.querySelector('.model-option.selected');
-                if (!selectedOption) {
-                    console.error('No model selected');
-                    return;
+                    maskPreview.src = '#';
+                    maskPreview.style.display = 'none';
+                    if(previewContainer) previewContainer.style.display = 'none';
+                    if(removeBtn) removeBtn.style.display = 'none';
                 }
-                
-                const modelId = selectedOption.dataset.model;
-                const isPro = selectedOption.dataset.isPro === 'true';
-                const prompt = document.getElementById('prompt').value.trim();
-                
-                if (!prompt) {
-                    alert('Please enter a prompt');
-                    return;
-                }
-                
-                console.log(`Generating with model: ${modelId}, isPro: ${isPro}`);
-                
-                // Show loading state
-                const generateBtn = document.getElementById('generateBtn');
-                const resultsContainer = document.getElementById('results');
-                
-                generateBtn.disabled = true;
-                generateBtn.textContent = 'Generating...';
-                resultsContainer.innerHTML = '';
-                
-                // Create loading placeholders
-                const numImages = isPro ? 1 : 4;
-                for (let i = 0; i < numImages; i++) {
-                    resultsContainer.innerHTML += `
-                        <div class="image-result loading">
-                            <div class="loading-spinner"></div>
-                        </div>
-                    `;
-                }
-                
-                // Build form data
-                const formData = new FormData();
-                formData.append('prompt', prompt);
-                formData.append('model', modelId);
-                formData.append('num_images', numImages);
-                
-                // Add image if one is selected
-                const referenceImage = document.getElementById('referenceImage').files[0];
-                if (referenceImage) {
-                    formData.append('image', referenceImage);
-                }
-                
-                // Add mask image for Flux.1 [pro] Fill if selected
-                if (modelId === 'flux_pro') {
-                    const maskImage = document.getElementById('maskImage').files[0];
-                    if (maskImage) {
-                        formData.append('mask', maskImage);
-                    } else if (document.getElementById('maskUploadSection').style.display !== 'none') {
-                        alert('FLUX.1 [pro] Fill requires a mask image');
-                        generateBtn.disabled = false;
-                        generateBtn.textContent = isPro ? 'Generate 1 Premium Image' : 'Generate 4 Images';
-                        return;
-                    }
-                }
-                
-                // Add Stable Diffusion parameters if needed
-                if (modelId === 'stable_diffusion') {
-                    const negativePrompt = document.getElementById('negative_prompt').value.trim();
-                    if (negativePrompt) formData.append('negative_prompt', negativePrompt);
-                    
-                    formData.append('strength', document.getElementById('strength').value);
-                    formData.append('guidance_scale', document.getElementById('guidance_scale').value);
-                    formData.append('num_inference_steps', document.getElementById('num_inference_steps').value);
-                    
-                    const seed = document.getElementById('seed').value.trim();
-                    if (seed) formData.append('seed', seed);
-                }
-                
-                // Add Recraft V3 parameters if needed
-                if (modelId === 'recraft') {
-                    const styleElement = document.getElementById('recraft_style');
-                    if (styleElement && styleElement.value) {
-                        formData.append('recraft_style', styleElement.value);
-                    }
-                    
-                    const imageSizeElement = document.getElementById('recraft_image_size');
-                    if (imageSizeElement && imageSizeElement.value) {
-                        formData.append('recraft_image_size', imageSizeElement.value);
-                    }
-                    
-                    // Get safety checker state
-                    const safetyElement = document.getElementById('recraft_safety');
-                    if (safetyElement) {
-                        formData.append('recraft_safety', safetyElement.checked ? 'true' : 'false');
-                    }
-                    
-                    // Add colors that are not default #ffffff
-                    const color1 = document.getElementById('recraft_color1');
-                    const color2 = document.getElementById('recraft_color2');
-                    const color3 = document.getElementById('recraft_color3');
-                    
-                    if (color1 && color1.value !== '#ffffff' && color1.dataset.active !== 'false') {
-                        formData.append('recraft_color1', color1.value);
-                    }
-                    if (color2 && color2.value !== '#ffffff' && color2.dataset.active !== 'false') {
-                        formData.append('recraft_color2', color2.value);
-                    }
-                    if (color3 && color3.value !== '#ffffff' && color3.dataset.active !== 'false') {
-                        formData.append('recraft_color3', color3.value);
-                    }
-                }
-                
-                // Send the request
-                fetch('/api/generate', {
-                    method: 'POST',
-                    body: formData
-                })
-                .then(response => {
-                    if (!response.ok) {
-                        throw new Error(`Server error: ${response.status}`);
-                    }
-                    return response.json();
-                })
-                .then(data => {
-                    // Show the generated images
-                    resultsContainer.innerHTML = '';
-                    
-                    if (data.image_urls && data.image_urls.length > 0) {
-                        data.image_urls.forEach(url => {
-                            resultsContainer.innerHTML += `
-                                <div class="image-result">
-                                    <img src="${url}" alt="Generated image">
-                                    <div class="image-actions">
-                                        <button class="refine-btn" data-url="${url}" data-prompt="${prompt}" title="Refine this image">
-                                            <i class="fas fa-magic"></i>
-                                        </button>
-                                        <button class="download-btn" data-url="${url}" title="Download Image">
-                                            <i class="fas fa-download"></i>
-                                        </button>
-                                        <button class="delete-btn" data-url="${url}" title="Delete Image">
-                                            <i class="fas fa-trash"></i>
-                                        </button>
-                                    </div>
-                                </div>
-                            `;
-                        });
-                        
-                        // Set up download buttons
-                        document.querySelectorAll('.download-btn').forEach(btn => {
-                            btn.addEventListener('click', function() {
-                                const url = this.dataset.url;
-                                const link = document.createElement('a');
-                                link.href = url;
-                                link.download = url.split('/').pop().split('?')[0];
-                                document.body.appendChild(link);
-                                link.click();
-                                document.body.removeChild(link);
-                            });
-                        });
-                        
-                        // Set up refine buttons
-                        document.querySelectorAll('.refine-btn').forEach(btn => {
-                            btn.addEventListener('click', function() {
-                                const imageUrl = this.dataset.url;
-                                const originalPrompt = this.dataset.prompt;
-                                
-                                // Get the currently selected model
-                                const selectedModel = document.querySelector('.model-option.selected').dataset.model;
-                                
-                                // Only proceed for models that support image input
-                                if ((selectedModel === 'flux' || selectedModel === 'flux_pro' || selectedModel === 'stable_diffusion') || 
-                                    (modelData[selectedModel] && modelData[selectedModel].supports_image_input)) {
-                                    
-                                    console.log(`Setting up image refinement with ${selectedModel} for image: ${imageUrl}`);
-                                    
-                                    // Make sure image upload section is visible
-                                    const imageUploadSection = document.getElementById('imageUploadSection');
-                                    imageUploadSection.style.display = 'block';
-                                    
-                                    // Fetch the image and set it as the reference image
-                                    fetch(imageUrl)
-                                        .then(response => response.blob())
-                                        .then(blob => {
-                                            // Create a File object from the blob
-                                            const file = new File([blob], "reference-image.jpg", { type: "image/jpeg" });
-                                            
-                                            // Create a DataTransfer object to set the file input value
-                                            const dataTransfer = new DataTransfer();
-                                            dataTransfer.items.add(file);
-                                            
-                                            // Set the file input value
-                                            const fileInput = document.getElementById('referenceImage');
-                                            fileInput.files = dataTransfer.files;
-                                            
-                                            // Trigger the change event to update the preview
-                                            const event = new Event('change', { bubbles: true });
-                                            fileInput.dispatchEvent(event);
-                                            
-                                            // Set the preview image
-                                            const imagePreview = document.getElementById('imagePreview');
-                                            const previewContainer = document.querySelector('.preview-container');
-                                            
-                                            imagePreview.src = imageUrl;
-                                            previewContainer.style.display = 'block';
-                                            
-                                            // Update the file text display
-                                            const fileText = document.querySelector('.file-upload-text');
-                                            fileText.textContent = 'reference-image.jpg';
-                                            
-                                            // Scroll to the prompt section and focus it
-                                            const promptTextarea = document.getElementById('prompt');
-                                            promptTextarea.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                                            promptTextarea.focus();
-                                            
-                                            console.log('Reference image set successfully');
-                                        })
-                                        .catch(error => {
-                                            console.error('Error setting reference image:', error);
-                                        });
-                                } else {
-                                    console.warn(`Model ${selectedModel} does not support image input`);
-                                    alert('This model does not support image refinement.');
-                                }
-                            });
-                        });
-                        
-                        // Display warnings if there are any
-                        if (data.warnings && data.warnings.length > 0) {
-                            // Create warning message
-                            const warningHTML = `
-                                <div class="warning-message">
-                                    <h4>Note: Some images could not be generated</h4>
-                                    <ul>
-                                        ${data.warnings.map(warning => `<li>${warning}</li>`).join('')}
-                                    </ul>
-                                    <p>The Recraft model sometimes takes longer than Heroku allows for processing. Consider trying again with fewer images.</p>
-                                </div>
-                            `;
-                            // Add warning at the top of results
-                            resultsContainer.insertAdjacentHTML('afterbegin', warningHTML);
-                        }
-                    }
-                })
-                .catch(error => {
-                    resultsContainer.innerHTML = `
-                        <div class="error-message">
-                            <p>Error: ${error.message}</p>
-                        </div>
-                    `;
-                })
-                .finally(() => {
-                    generateBtn.disabled = false;
-                    generateBtn.textContent = 'Generate';
-                });
             });
         }
         
-        // Check URL parameters for initial model and prompt
+        // Handle URL parameters for regeneration
         const urlParams = new URLSearchParams(window.location.search);
-        const modelParam = urlParams.get('model');
-        const promptParam = urlParams.get('prompt');
+        const prompt = urlParams.get('prompt');
         const useReferenceImage = urlParams.get('useReferenceImage') === 'true';
+        const modelParam = urlParams.get('model');
         
-        // Set prompt from URL if present
-        if (promptParam) {
-            document.getElementById('prompt').value = promptParam;
+        // Set prompt if provided
+        if (prompt) {
+            document.getElementById('prompt').value = prompt;
         }
         
-        // Trigger model selection from URL if specified
-        if (modelParam && modelData[modelParam]) {
-            const modelOption = document.querySelector(`.model-option[data-model="${modelParam}"]`);
-            if (modelOption) {
-                modelOption.click();
-            }
-        }
-        
-        // Initialize UI for the default selected model
-        function initializeDefaultModel() {
-            try {
-                // Find the initially selected model
-                const selectedOption = document.querySelector('.model-option.selected');
-                if (selectedOption) {
-                    // Get model data
-                    const modelId = selectedOption.dataset.model;
-                    const isPro = selectedOption.dataset.isPro === 'true';
+        // Function to ensure proper model settings and UI are applied
+        const applyModelSettings = async () => {
+            // First, select the correct model if specified in URL
+            if (modelParam) {
+                const modelOption = document.querySelector(`.model-option[data-model="${modelParam}"]`);
+                if (modelOption) {
+                    const modelId = modelOption.dataset.model;
+                    const isPro = modelOption.dataset.isPro === 'true';
                     
-                    console.log('Initializing UI for default model:', modelId);
+                    // Update selected UI
+                    document.querySelectorAll('.model-option').forEach(el => el.classList.remove('selected'));
+                    modelOption.classList.add('selected');
                     
-                    // Update UI for the selected model
-                    const imageUploadSection = document.getElementById('imageUploadSection');
-                    const sdParamsSection = document.getElementById('sdParamsSection');
+                    // Apply model settings
+                    selectModel(modelId, isPro, modelOption);
                     
-                    // Default: hide both sections
-                    imageUploadSection.style.display = 'none';
-                    sdParamsSection.style.display = 'none';
-                    
-                    // Set appropriate sections based on model
-                    if (modelId === 'stable_diffusion') {
+                    // If we need to load a reference image, ensure the image section is visible
+                    if (useReferenceImage) {
+                        const imageUploadSection = document.getElementById('imageUploadSection');
                         imageUploadSection.style.display = 'block';
-                        sdParamsSection.style.display = 'block';
-                    } else if (modelId === 'flux') {
-                        // FLUX.1 should also show image upload
-                        imageUploadSection.style.display = 'block';
-                    } else if (modelData && modelData[modelId] && 
-                              (modelData[modelId].type === 'hybrid' || 
-                               modelData[modelId].type === 'image-to-image' || 
-                               modelData[modelId].supports_image_input === true)) {
-                        imageUploadSection.style.display = 'block';
-                    }
-                    
-                    // Set button text
-                    const generateBtn = document.getElementById('generateBtn');
-                    if (isPro) {
-                        generateBtn.textContent = 'Generate 1 Premium Image';
-                    } else {
-                        generateBtn.textContent = 'Generate 4 Images';
                     }
                 }
-            } catch (error) {
-                console.error('Error initializing default model:', error);
+            } else {
+                // No URL parameter, initialize the default selected model
+                const defaultSelectedModel = document.querySelector('.model-option.selected');
+                if (defaultSelectedModel) {
+                    const modelId = defaultSelectedModel.dataset.model;
+                    const isPro = defaultSelectedModel.dataset.isPro === 'true';
+                    
+                    console.log('Initializing default model UI:', modelId);
+                    // Initialize UI for the default selected model
+                    uiManager.updateUI(modelId);
+                }
+            }
+            
+            // Then, if there's a reference image URL in localStorage, load it
+            if (useReferenceImage) {
+                const referenceImageUrl = localStorage.getItem('referenceImageUrl');
+                if (referenceImageUrl) {
+                    try {
+                        // Force image upload section to be visible before loading the image
+                        document.getElementById('imageUploadSection').style.display = 'block';
+                        
+                        // Add a small delay to ensure UI is ready
+                        await new Promise(resolve => setTimeout(resolve, 100));
+                        
+                        // Load the reference image
+                        const success = await setReferenceImage(referenceImageUrl);
+                        
+                        // Clear localStorage after loading to prevent unintended reuse
+                        localStorage.removeItem('referenceImageUrl');
+                        
+                        if (success) {
+                            console.log('Reference image loaded successfully for regeneration');
+                        } else {
+                            console.error('Failed to set reference image, but no exception was thrown');
+                        }
+                    } catch (error) {
+                        console.error('Failed to load reference image:', error);
+                    }
+                }
+            }
+        };
+        
+        // Apply model settings and load reference image with proper timing
+        applyModelSettings();
+        
+        // Initialize progress recovery system
+        progressRecovery.initialize().catch(error => {
+            console.error('[Dashboard] Error initializing progress recovery:', error);
+        });
+    });
+
+    // Function to handle form submission
+    document.getElementById('promptForm').addEventListener('submit', async function(e) {
+        e.preventDefault();
+        
+        // Get selected model
+        const selectedModelOption = document.querySelector('.model-option.selected');
+        if (!selectedModelOption) {
+            showError('Please select a model');
+            return;
+        }
+        
+        const modelId = selectedModelOption.dataset.model;
+        const isPro = selectedModelOption.dataset.isPro === 'true';
+        const model = modelConfigs[modelId];
+        
+        console.log('Form submitted with model:', modelId);
+        
+        // Check if prompt is required and present
+        const promptElement = document.getElementById('prompt');
+        const prompt = promptElement ? promptElement.value.trim() : '';
+        
+        if (model && model.ui_config && model.ui_config.prompt_required !== false && !prompt) {
+            showError('Please enter a prompt');
+            return;
+        }
+        
+        // For stable_video, check if image is uploaded
+        if (modelId === 'stable_video') {
+            const imageInput = document.getElementById('image');
+            console.log('Checking stable_video image upload...');
+            if (!imageInput || !imageInput.files || !imageInput.files[0]) {
+                console.log('No image uploaded for stable_video');
+                showError('Please upload an image for video generation');
+                return;
+            }
+            console.log('Image found for stable_video:', imageInput.files[0].name);
+        }
+        
+        // For flux_pro (fill), check if both image and mask are uploaded
+        if (modelId === 'flux_pro') {
+            const imageInput = document.getElementById('image');
+            const maskInput = document.getElementById('maskImage');
+            if (!imageInput || !imageInput.files || !imageInput.files[0]) {
+                showError('Please upload a reference image');
+                return;
+            }
+            if (!maskInput || !maskInput.files || !maskInput.files[0]) {
+                showError('Please upload a mask image');
+                return;
             }
         }
         
-        // Run initialization
-        initializeDefaultModel();
-
-        // Initialize color pickers for Recraft V3
-        const colorInputs = [
-            document.getElementById('recraft_color1'),
-            document.getElementById('recraft_color2'),
-            document.getElementById('recraft_color3')
-        ];
+        // Create form data
+        const formData = new FormData(this);
         
-        colorInputs.forEach(input => {
-            if (input) {
-                // Set default state
-                input.dataset.active = 'false';
+        // Add model ID to form data
+        formData.append('model', modelId);
+        
+        // Use the extracted generation logic
+        await handleGeneration(formData, modelId);
+    });
+    
+    // Function to display generation results
+    function displayResults(results, modelId) {
+        const resultsContainer = document.getElementById('results');
+        resultsContainer.innerHTML = '';
+        
+        console.log('Displaying results:', results, 'for model:', modelId);
+        
+        if (!results || results.length === 0) {
+            resultsContainer.innerHTML = '<div class="no-results">No results were generated. Please try again.</div>';
+            return;
+        }
+        
+        results.forEach(result => {
+            console.log('Processing result:', result);
+            
+            if (!result.url) {
+                console.error('Result missing URL:', result);
+                return;
+            }
+            
+            if (modelId === 'stable_video' || result.type === 'video') {
+                // Display video result
+                const videoElement = document.createElement('div');
+                videoElement.className = 'video-result';
+                videoElement.innerHTML = `
+                    <video src="${result.url}" controls autoplay loop muted></video>
+                    <div class="image-actions">
+                        <button class="download-btn" onclick="downloadAsset(${result.id}, '${result.url}')">
+                            <i class="fas fa-download"></i>
+                        </button>
+                        <button class="delete-btn" onclick="deleteAsset(${result.id}, this.parentNode.parentNode)">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </div>
+                `;
+                resultsContainer.appendChild(videoElement);
+                console.log('Added video element to results container');
+            } else {
+                // Display image result
+                const imageElement = document.createElement('div');
+                imageElement.className = 'image-result';
                 
-                // Add change listener
-                input.addEventListener('change', function() {
-                    // Mark as active if not #ffffff (white)
-                    this.dataset.active = (this.value !== '#ffffff') ? 'true' : 'false';
-                    console.log(`Color input ${this.id} active: ${this.dataset.active}, value: ${this.value}`);
-                });
+                // Preload the image to verify it loads
+                const img = new Image();
+                img.onload = function() {
+                    console.log('Image loaded successfully:', result.url);
+                };
+                img.onerror = function() {
+                    console.error('Error loading image:', result.url);
+                    imageElement.classList.add('error');
+                    imageElement.innerHTML = `
+                        <div class="error-message">
+                            Image failed to load<br>
+                            <small>${result.url}</small>
+                        </div>
+                    `;
+                };
+                img.src = result.url;
                 
-                // Initial state
-                input.dataset.active = (input.value !== '#ffffff') ? 'true' : 'false';
+                imageElement.innerHTML = `
+                    <img src="${result.url}" alt="Generated image" onerror="this.onerror=null; this.parentNode.classList.add('error'); this.parentNode.innerHTML='<div class=\\'error-message\\'>Image failed to load</div>';">
+                    <div class="image-actions">
+                        <button class="refine-btn" onclick="refineImage('${result.url}')">
+                            <i class="fas fa-magic"></i>
+                        </button>
+                        <button class="video-btn" onclick="generateVideo('${result.url}')">
+                            <i class="fas fa-film"></i>
+                        </button>
+                        <button class="download-btn" onclick="downloadAsset(${result.id}, '${result.url}')">
+                            <i class="fas fa-download"></i>
+                        </button>
+                        <button class="delete-btn" onclick="deleteAsset(${result.id}, this.parentNode.parentNode)">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </div>
+                `;
+                resultsContainer.appendChild(imageElement);
+                console.log('Added image element to results container');
             }
         });
+    }
+    
+    // Function to refine an image (use as reference for new generation)
+    function refineImage(imageUrl) {
+        // Set the image URL in the reference image input
+        setReferenceImage(imageUrl).then(() => {
+            // Make sure image upload section is visible
+            document.getElementById('imageUploadSection').style.display = 'block';
+            
+            // Scroll to the top of the form
+            document.querySelector('.form-section').scrollIntoView({ behavior: 'smooth' });
+        });
+    }
+    
+    // Function to generate a video from an image
+    function generateVideo(imageUrl) {
+        console.log('Generating video from image:', imageUrl);
         
-        // Check for reference image in localStorage that may have been set from asset_detail.html
-        if (useReferenceImage) {
-            const referenceImageUrl = localStorage.getItem('referenceImageUrl');
-            if (referenceImageUrl) {
-                console.log('Found reference image URL in localStorage:', referenceImageUrl);
-                
-                // Set the reference image
-                setReferenceImage(referenceImageUrl).then(success => {
-                    if (success) {
-                        // Clear the localStorage entry to prevent it from being used again
-                        localStorage.removeItem('referenceImageUrl');
+        // Store the reference image URL in localStorage
+        localStorage.setItem('referenceImageUrl', imageUrl);
+        
+        // Find the stable_video model option
+        const stableVideoOption = document.querySelector('.model-option[data-model="stable_video"]');
+        if (stableVideoOption) {
+            // Get model attributes
+            const modelId = stableVideoOption.dataset.model;
+            const isPro = stableVideoOption.dataset.isPro === 'true';
+            
+            // Update selected UI
+            document.querySelectorAll('.model-option').forEach(el => el.classList.remove('selected'));
+            stableVideoOption.classList.add('selected');
+            
+            // Apply model settings
+            selectModel(modelId, isPro, stableVideoOption);
+            
+            // Make sure image upload section is visible
+            document.getElementById('imageUploadSection').style.display = 'block';
+            
+            // Set the image
+            setReferenceImage(imageUrl).then(() => {
+                // Scroll to the top of the form
+                document.querySelector('.form-section').scrollIntoView({ behavior: 'smooth' });
+            });
+        } else {
+            console.error('Could not find stable_video model option');
+        }
+    }
+    
+    // Function to download an asset
+    function downloadAsset(assetId, assetUrl) {
+        // Create a link and trigger download
+        const downloadLink = document.createElement('a');
+        downloadLink.href = "{{ url_for('user.asset_download', asset_id=0) }}".replace('0', assetId);
+        downloadLink.download = `asset_${assetId}.${assetUrl.split('.').pop().split('?')[0]}`;
+        document.body.appendChild(downloadLink);
+        downloadLink.click();
+        document.body.removeChild(downloadLink);
+    }
+    
+    // Function to delete an asset
+    function deleteAsset(assetId, elementToRemove) {
+        if (!confirm('Are you sure you want to delete this asset? This action cannot be undone.')) {
+            return;
+        }
+        
+        fetch(`/api/assets/${assetId}`, {
+            method: 'DELETE',
+        })
+        .then(response => {
+            if (response.ok) {
+                // Remove the element from the DOM
+                if (elementToRemove && elementToRemove.parentNode) {
+                    elementToRemove.parentNode.removeChild(elementToRemove);
+                }
+            } else {
+                alert('Failed to delete asset. Please try again.');
+            }
+        })
+        .catch(error => {
+            console.error('Error deleting asset:', error);
+            alert('An error occurred while deleting the asset.');
+        });
+    }
+    
+    // Function to show an error message
+    function showError(message) {
+        const resultsContainer = document.getElementById('results');
+        resultsContainer.innerHTML = `
+            <div class="error-message">
+                ${message}
+            </div>
+        `;
+    }
+    
+    // Function to show timeout retry message for video generation
+    function showTimeoutRetryMessage(formData, modelId) {
+        const resultsContainer = document.getElementById('results');
+        resultsContainer.innerHTML = `
+            <div class="timeout-retry-message">
+                <div class="timeout-icon">⏱️</div>
+                <h3>Video Generation Timed Out</h3>
+                <p>Video generation is taking longer than expected. This can happen when the AI servers are busy.</p>
+                <div class="retry-actions">
+                    <button class="retry-btn" onclick="retryGeneration()">
+                        <i class="fas fa-redo"></i> Try Again
+                    </button>
+                    <button class="cancel-btn" onclick="cancelRetry()">
+                        Cancel
+                    </button>
+                </div>
+                <small>Tip: Video generation typically takes 1-3 minutes, but can take longer during peak hours.</small>
+            </div>
+        `;
+        
+        // Store form data for retry
+        window.retryFormData = formData;
+        window.retryModelId = modelId;
+    }
+    
+    // Function to retry generation
+    function retryGeneration() {
+        if (window.retryFormData && window.retryModelId) {
+            // Clear the retry message and restart generation
+            const resultsContainer = document.getElementById('results');
+            resultsContainer.innerHTML = '';
+            
+            // Simulate form submission with stored data
+            const generateEvent = new Event('submit', { bubbles: true, cancelable: true });
+            
+            // Store the retry data temporarily
+            const form = document.getElementById('promptForm');
+            const originalFormData = new FormData(form);
+            
+            // Trigger the generation process manually
+            handleGeneration(window.retryFormData, window.retryModelId);
+        }
+    }
+    
+    // Function to cancel retry
+    function cancelRetry() {
+        const resultsContainer = document.getElementById('results');
+        resultsContainer.innerHTML = `
+            <div class="no-results">
+                Generation cancelled. Enter a prompt above and click "Generate" to create assets
+            </div>
+        `;
+        
+        // Clear retry data
+        window.retryFormData = null;
+        window.retryModelId = null;
+    }
+    
+    // Extract generation logic for reuse
+    async function handleGeneration(formData, modelId) {
+        const resultsContainer = document.getElementById('results');
+        const model = modelConfigs[modelId];
+        
+        // Get prompt for state tracking
+        const promptElement = document.getElementById('prompt');
+        const prompt = promptElement ? promptElement.value.trim() : '';
+        
+        // Determine number of outputs
+        const numOutputs = (model && model.default_num_outputs) ? model.default_num_outputs : (modelId === 'stable_video' ? 1 : 4);
+        
+        // Start tracking this generation
+        let requestId;
+        try {
+            requestId = stateManager.startGeneration({
+                modelId: modelId,
+                prompt: prompt,
+                formData: formData,
+                numOutputs: numOutputs
+            });
+            console.log(`[Dashboard] Started tracking generation ${requestId}`);
+        } catch (error) {
+            showError(error.message);
+            return;
+        }
+        
+        // Clear previous results
+        resultsContainer.innerHTML = '';
+        
+        // Show loading indicators with enhanced progress for video generation
+        for (let i = 0; i < numOutputs; i++) {
+            const loadingIndicator = document.createElement('div');
+            loadingIndicator.className = 'image-result loading';
+            loadingIndicator.setAttribute('data-generation-id', requestId);
+            
+            if (modelId === 'stable_video') {
+                loadingIndicator.innerHTML = `
+                    <div class="loading-spinner"></div>
+                    <div class="loading-progress">
+                        <div class="progress-text">Generating video...</div>
+                        <div class="progress-subtext">This may take 2-3 minutes</div>
+                        <div class="progress-timer" id="progress-timer-${i}">0s</div>
+                    </div>
+                `;
+            } else {
+                loadingIndicator.innerHTML = '<div class="loading-spinner"></div>';
+            }
+            
+            resultsContainer.appendChild(loadingIndicator);
+        }
+        
+        // Start timer for video generation
+        let startTime = Date.now();
+        let timerInterval;
+        
+        if (modelId === 'stable_video') {
+            timerInterval = setInterval(() => {
+                const elapsed = Math.floor((Date.now() - startTime) / 1000);
+                const timerElement = document.getElementById('progress-timer-0');
+                if (timerElement) {
+                    timerElement.textContent = `${elapsed}s`;
+                    
+                    // Update progress text based on elapsed time
+                    const progressText = document.querySelector('.progress-text');
+                    const progressSubtext = document.querySelector('.progress-subtext');
+                    
+                    if (elapsed > 120) {
+                        progressText.textContent = 'Still processing...';
+                        progressSubtext.textContent = 'Video generation is taking longer than usual';
+                    } else if (elapsed > 60) {
+                        progressText.textContent = 'Processing video...';
+                        progressSubtext.textContent = 'Almost done, please wait';
                     }
-                });
+                }
+            }, 1000);
+        }
+        
+        try {
+            console.log('Sending API request to /api/generate...');
+            
+            // Enhanced fetch with longer timeout for video generation
+            const timeoutMs = modelId === 'stable_video' ? 300000 : 120000; // 5 minutes for video, 2 minutes for images
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+            
+            // Send request to server
+            const response = await fetch('/api/generate', {
+                method: 'POST',
+                body: formData,
+                signal: controller.signal
+            });
+            
+            clearTimeout(timeoutId);
+            if (timerInterval) clearInterval(timerInterval);
+            
+            console.log('API response status:', response.status);
+            const data = await response.json();
+            console.log('API response data:', data);
+            
+            if (!response.ok) {
+                // Update state manager with failure
+                stateManager.updateGenerationStatus(requestId, 'failed');
+                
+                // Check if it's a timeout error and offer retry for video generation
+                if (modelId === 'stable_video' && (data.error?.includes('timeout') || data.error?.includes('timed out'))) {
+                    showTimeoutRetryMessage(formData, modelId);
+                } else {
+                    showError(data.error || 'An error occurred while generating content');
+                    resultsContainer.innerHTML = '';
+                }
+                return;
+            }
+            
+            // Mark generation as completed in state manager
+            stateManager.completeGeneration(requestId, data.results);
+            
+            // Display results
+            displayResults(data.results, modelId);
+            
+            // Clear retry data on success
+            window.retryFormData = null;
+            window.retryModelId = null;
+            
+        } catch (error) {
+            if (timerInterval) clearInterval(timerInterval);
+            
+            console.error('Error generating content:', error);
+            
+            // Handle timeout specifically
+            if (error.name === 'AbortError') {
+                // Update state manager with timeout
+                stateManager.updateGenerationStatus(requestId, 'timeout');
+                
+                if (modelId === 'stable_video') {
+                    showTimeoutRetryMessage(formData, modelId);
+                } else {
+                    showError('Request timed out. Please try again.');
+                    resultsContainer.innerHTML = '';
+                }
+            } else {
+                // Update state manager with failure
+                stateManager.updateGenerationStatus(requestId, 'failed');
+                showError('An error occurred while generating content');
+                resultsContainer.innerHTML = '';
             }
         }
-    });
+    }
+
+    // Debug helper: Add to window for console access
+    window.clearGenerationState = function() {
+        console.log('Clearing all generation state from localStorage...');
+        localStorage.removeItem('ai_generator_state');
+        console.log('Generation state cleared! Please refresh the page.');
+    };
+
+    console.log('Dashboard loaded. To clear stuck generation state, run: clearGenerationState()');
 </script>
-{% endblock %} 
+{% endblock %}

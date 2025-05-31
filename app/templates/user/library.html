@@ -138,10 +138,52 @@
         justify-content: center;
         text-decoration: none;
         transition: background-color 0.2s;
+        border: none;
+        cursor: pointer;
+        position: relative;
+    }
+    
+    .asset-action i {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 100%;
+        height: 100%;
+        font-size: 12px;
+        line-height: 1;
+        text-align: center;
     }
     
     .asset-action:hover {
         background-color: var(--primary);
+    }
+    
+    .asset-action.video-gen-btn:hover {
+        background-color: #22aaff; /* Different color for video generation */
+    }
+    
+    .asset-action.loading {
+        pointer-events: none;
+        position: relative;
+    }
+    
+    .asset-action.loading i {
+        display: none;
+    }
+    
+    .asset-action.loading::after {
+        content: "";
+        position: absolute;
+        width: 16px;
+        height: 16px;
+        border: 2px solid rgba(255,255,255,0.3);
+        border-radius: 50%;
+        border-top-color: white;
+        animation: rotate 1s infinite linear;
+    }
+    
+    @keyframes rotate {
+        to { transform: rotate(360deg); }
     }
     
     .empty-library {
@@ -189,6 +231,53 @@
             grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
         }
     }
+    
+    .asset-card a {
+        display: block;
+        position: relative;
+        overflow: hidden;
+        border-radius: 8px;
+        text-decoration: none;
+    }
+    
+    .video-overlay {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        background: rgba(0, 0, 0, 0.6);
+        border-radius: 50%;
+        width: 50px;
+        height: 50px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-size: 20px;
+        transition: all 0.2s ease;
+        pointer-events: none;
+        opacity: 0.8;
+    }
+    
+    .asset-card:hover .video-overlay {
+        background: rgba(0, 0, 0, 0.8);
+        transform: translate(-50%, -50%) scale(1.15);
+        opacity: 1;
+        width: 55px;
+        height: 55px;
+        font-size: 22px;
+    }
+    
+    /* Ensure icon is perfectly centered */
+    .video-overlay i {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 100%;
+        height: 100%;
+        margin: 0;
+        padding: 0;
+    }
 </style>
 {% endblock %}
 
@@ -223,7 +312,21 @@
     <div class="asset-card">
         <div class="asset-type">{{ asset.type.value }}</div>
         <a href="{{ url_for('user.asset_detail', asset_id=asset.id) }}">
-            <img src="{{ asset.file_url }}" alt="Asset #{{ asset.id }}" class="asset-thumbnail">
+            {% if asset.type.value == 'video' and asset.thumbnail_url %}
+                <!-- Use thumbnail for videos if available -->
+                <img src="{{ asset.thumbnail_url }}" alt="Video #{{ asset.id }} thumbnail" class="asset-thumbnail">
+                <div class="video-overlay">
+                    <i class="fas fa-play-circle"></i>
+                </div>
+            {% else %}
+                <!-- Use original file for images or videos without thumbnails -->
+                <img src="{{ asset.file_url }}" alt="Asset #{{ asset.id }}" class="asset-thumbnail">
+                {% if asset.type.value == 'video' %}
+                    <div class="video-overlay">
+                        <i class="fas fa-play-circle"></i>
+                    </div>
+                {% endif %}
+            {% endif %}
         </a>
         <div class="asset-actions">
             <a href="{{ url_for('user.asset_download', asset_id=asset.id) }}" class="asset-action" title="Download">
@@ -232,6 +335,16 @@
             <a href="{{ url_for('user.asset_detail', asset_id=asset.id) }}" class="asset-action" title="View details">
                 <i class="fas fa-info"></i>
             </a>
+            <button class="asset-action regenerate-btn" title="Regenerate" 
+                data-prompt="{{ asset.prompt }}" 
+                data-image-url="{{ asset.file_url }}"
+                data-model="{{ asset.model }}">
+                <i class="fas fa-sync"></i>
+            </button>
+            <button class="asset-action video-gen-btn" title="Generate Video from this Image" 
+                data-image-url="{{ asset.file_url }}">
+                <i class="fas fa-film"></i>
+            </button>
         </div>
         <div class="asset-overlay">
             <div class="asset-model">{{ asset.model }}</div>
@@ -247,4 +360,105 @@
     <a href="{{ url_for('user.dashboard') }}">Create your first asset</a>
 </div>
 {% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Add event listeners to all regenerate buttons
+        document.querySelectorAll('.regenerate-btn').forEach(button => {
+            button.addEventListener('click', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                
+                // Show loading state on the button
+                this.classList.add('loading');
+                
+                const prompt = this.dataset.prompt;
+                const imageUrl = this.dataset.imageUrl;
+                const modelName = this.dataset.model.toLowerCase();
+                
+                console.log('Regenerating from library:', {
+                    prompt,
+                    imageUrl,
+                    modelName
+                });
+                
+                // Create URL to dashboard with prompt parameter
+                let dashboardUrl = "{{ url_for('user.dashboard') }}?prompt=" + encodeURIComponent(prompt);
+                
+                // Determine if model supports reference images
+                const supportsReferenceImage = 
+                    modelName.includes('flux') || 
+                    modelName.includes('stable') || 
+                    modelName.includes('sd');
+                
+                // Determine correct model parameter
+                let modelParam;
+                if (modelName.includes('flux_pro')) {
+                    modelParam = 'flux_pro';
+                } else if (modelName.includes('flux')) {
+                    modelParam = 'flux';
+                } else if (modelName.includes('stable_video')) {
+                    modelParam = 'stable_video';
+                } else if (modelName.includes('stable_diffusion') || modelName.includes('sd')) {
+                    modelParam = 'stable_diffusion';
+                } 
+                
+                // Add model parameter if we identified one
+                if (modelParam) {
+                    dashboardUrl += '&model=' + modelParam;
+                }
+                
+                // Store the reference image URL in localStorage and add flag to use it
+                if (supportsReferenceImage && imageUrl) {
+                    try {
+                        localStorage.setItem('referenceImageUrl', imageUrl);
+                        dashboardUrl += '&useReferenceImage=true';
+                    } catch (e) {
+                        console.error('Failed to store reference image URL in localStorage:', e);
+                    }
+                }
+                
+                // Add a small delay to show loading state before navigating
+                setTimeout(() => {
+                    // Navigate to dashboard
+                    window.location.href = dashboardUrl;
+                }, 300);
+            });
+        });
+        
+        // Add event listeners to all video generation buttons
+        document.querySelectorAll('.video-gen-btn').forEach(button => {
+            button.addEventListener('click', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                
+                // Show loading state on the button
+                this.classList.add('loading');
+                
+                const imageUrl = this.dataset.imageUrl;
+                
+                console.log('Generating video from image:', imageUrl);
+                
+                // Create URL to dashboard with stable_video model selected
+                let dashboardUrl = "{{ url_for('user.dashboard') }}?model=stable_video";
+                
+                // Store the reference image URL in localStorage and add flag to use it
+                try {
+                    localStorage.setItem('referenceImageUrl', imageUrl);
+                    dashboardUrl += '&useReferenceImage=true';
+                } catch (e) {
+                    console.error('Failed to store reference image URL in localStorage:', e);
+                }
+                
+                // Add a small delay to show loading state before navigating
+                setTimeout(() => {
+                    // Navigate to dashboard
+                    window.location.href = dashboardUrl;
+                }, 300);
+            });
+        });
+    });
+</script>
 {% endblock %} 

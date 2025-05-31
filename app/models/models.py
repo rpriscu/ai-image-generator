@@ -50,11 +50,22 @@ class AssetType(enum.Enum):
     video = "video" 
     animation = "animation"
 
+class ShortUrl(db.Model):
+    """Stores the mapping between short URL keys and original URLs"""
+    id = db.Column(db.Integer, primary_key=True)
+    short_key = db.Column(db.String(64), unique=True, nullable=False, index=True)
+    original_url = db.Column(db.Text, nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    def __repr__(self):
+        return f'<ShortUrl {self.short_key}: {self.original_url[:30]}...>' 
+
 class Asset(db.Model):
     """Asset model for storing generated content"""
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=False)
-    file_url = db.Column(db.String(255), nullable=False)
+    file_url = db.Column(db.String(2048), nullable=False)  # Increased from 255 to 2048 characters
+    thumbnail_url = db.Column(db.String(512), nullable=True)  # For video thumbnails
     type = db.Column(db.Enum(AssetType), nullable=False, default=AssetType.image)
     prompt = db.Column(db.Text)
     model = db.Column(db.String(255))
@@ -68,6 +79,7 @@ class Asset(db.Model):
         return {
             'id': self.id,
             'file_url': self.file_url,
+            'thumbnail_url': self.thumbnail_url,
             'type': self.type.value,
             'prompt': self.prompt,
             'model': self.model,
