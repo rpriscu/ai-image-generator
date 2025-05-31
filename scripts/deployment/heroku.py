@@ -54,70 +54,75 @@ if db_url.startswith('postgres://'):
     logger.info("Converting postgres:// to postgresql:// in DATABASE_URL")
     os.environ['DATABASE_URL'] = db_url.replace('postgres://', 'postgresql://', 1)
 
-try:
-    # Create the Flask application
-    from app import create_app
-    app = create_app()
-    
-    # Database Schema Update for Heroku
-    with app.app_context():
-        try:
-            from app.models.models import Asset, db
-            from sqlalchemy import inspect, text
-            
-            # Check if we need to update the file_url column
-            inspector = inspect(db.engine)
-            
-            # Log all tables for diagnostic purposes
-            tables = inspector.get_table_names()
-            logger.info(f"Database tables: {', '.join(tables)}")
-            
-            # Check asset table
-            if 'asset' in tables:
-                columns = {col['name']: col for col in inspector.get_columns('asset')}
-                
-                if 'file_url' in columns:
-                    col_type = columns['file_url']['type']
-                    logger.info(f"Current asset.file_url column type: {col_type}")
-                    
-                    # Check if we need to update the column length
-                    if hasattr(col_type, 'length') and col_type.length != 2048:
-                        logger.warning(f"Detected Asset.file_url column with size {col_type.length}, updating to 2048 characters")
-                        
-                        # Execute SQL to alter the column size
-                        db.session.execute(text("ALTER TABLE asset ALTER COLUMN file_url TYPE VARCHAR(2048)"))
-                        db.session.commit()
-                        logger.info("Successfully updated asset.file_url column size to 2048")
-                    else:
-                        logger.info("asset.file_url column already has correct size")
-                else:
-                    logger.warning("file_url column not found in asset table")
-            else:
-                logger.warning("asset table not found in database")
-        except Exception as e:
-            logger.error(f"Error checking/updating database schema: {str(e)}")
-            # Continue anyway to allow the app to start
-    
-    # Additional Heroku-specific configuration
-    if 'DYNO' in os.environ:
-        import logging
+
+def configure_for_heroku(app):
+    """Configure the Flask app for Heroku deployment"""
+    try:
+        logger.info("Configuring Flask app for Heroku...")
         
-        # Configure gunicorn logging when on Heroku
-        if 'gunicorn' in sys.modules:
-            gunicorn_logger = logging.getLogger('gunicorn.error')
-            app.logger.handlers = gunicorn_logger.handlers
-            app.logger.setLevel(gunicorn_logger.level)
-        
-        # Special handling for web dynos to configure SSL
-        if os.environ.get('DYNO', '').startswith('web.'):
-            # Configure secure headers
-            from flask_talisman import Talisman
+        # Database Schema Update for Heroku
+        with app.app_context():
             try:
-                Talisman(app, force_https=True)
-                logger.info("Talisman configured for HTTPS")
+                from app.models.models import Asset, db
+                from sqlalchemy import inspect, text
+                
+                # Check if we need to update the file_url column
+                inspector = inspect(db.engine)
+                
+                # Log all tables for diagnostic purposes
+                tables = inspector.get_table_names()
+                logger.info(f"Database tables: {', '.join(tables)}")
+                
+                # Check asset table
+                if 'asset' in tables:
+                    columns = {col['name']: col for col in inspector.get_columns('asset')}
+                    
+                    if 'file_url' in columns:
+                        col_type = columns['file_url']['type']
+                        logger.info(f"Current asset.file_url column type: {col_type}")
+                        
+                        # Check if we need to update the column length
+                        if hasattr(col_type, 'length') and col_type.length != 2048:
+                            logger.warning(f"Detected Asset.file_url column with size {col_type.length}, updating to 2048 characters")
+                            
+                            # Execute SQL to alter the column size
+                            db.session.execute(text("ALTER TABLE asset ALTER COLUMN file_url TYPE VARCHAR(2048)"))
+                            db.session.commit()
+                            logger.info("Successfully updated asset.file_url column size to 2048")
+                        else:
+                            logger.info("asset.file_url column already has correct size")
+                    else:
+                        logger.warning("file_url column not found in asset table")
+                else:
+                    logger.warning("asset table not found in database")
             except Exception as e:
-                logger.warning(f"Could not configure Talisman: {e}")
-except Exception as e:
-    logger.error(f"Error creating application: {e}")
-    # Re-raise so the Heroku logs show the error
-    raise 
+                logger.error(f"Error checking/updating database schema: {str(e)}")
+                # Continue anyway to allow the app to start
+        
+        # Additional Heroku-specific configuration
+        if 'DYNO' in os.environ:
+            import logging
+            
+            # Configure gunicorn logging when on Heroku
+            if 'gunicorn' in sys.modules:
+                gunicorn_logger = logging.getLogger('gunicorn.error')
+                app.logger.handlers = gunicorn_logger.handlers
+                app.logger.setLevel(gunicorn_logger.level)
+            
+            # Special handling for web dynos to configure SSL
+            if os.environ.get('DYNO', '').startswith('web.'):
+                # Configure secure headers if flask-talisman is available
+                try:
+                    from flask_talisman import Talisman
+                    Talisman(app, force_https=True)
+                    logger.info("Talisman configured for HTTPS")
+                except ImportError:
+                    logger.info("flask-talisman not available, skipping HTTPS configuration")
+                except Exception as e:
+                    logger.warning(f"Could not configure Talisman: {e}")
+        
+        logger.info("Successfully configured Flask app for Heroku")
+        
+    except Exception as e:
+        logger.error(f"Error configuring app for Heroku: {e}")
+        # Continue anyway to allow the app to start 
