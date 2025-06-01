@@ -139,7 +139,6 @@ class URLShortener:
             short_url_obj = ShortUrl(
                 short_key=short_key,
                 original_url=url,
-                user_id=user_id,
                 created_at=datetime.utcnow()
             )
             
