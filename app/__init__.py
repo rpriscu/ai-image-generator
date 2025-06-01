@@ -252,5 +252,11 @@ def create_app(config_name=None):
             except Exception as e:
                 app.logger.error(f"Error checking/updating database schema: {str(e)}")
     
+    # Initialize services
+    from app.services.fal_api import fal_api_service
+    from app.services.background_jobs import background_job_service
+    fal_api_service.init_app(app)
+    background_job_service.init_app(app)
+    
     print("Flask application created successfully")
     return app 

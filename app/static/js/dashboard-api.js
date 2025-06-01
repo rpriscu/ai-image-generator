@@ -32,6 +32,16 @@ class DashboardAPI {
      */
     static async generate(formData) {
         try {
+            // Check if this is a video model that needs async processing
+            const modelName = formData.get('model');
+            const isVideoModel = await this.isVideoModel(modelName);
+            
+            if (isVideoModel) {
+                // Use async generation for video models to avoid 30s timeout
+                return await this.generateAsync(formData);
+            }
+            
+            // Use regular generation for image models
             const response = await fetch('/api/generate', {
                 method: 'POST',
                 body: formData
@@ -48,6 +58,114 @@ class DashboardAPI {
             console.error('API Error - Generate:', error);
             throw error;
         }
+    }
+    
+    /**
+     * Submit a generation job for async processing (used for video models).
+     * 
+     * @param {FormData} formData - Form data including prompt, model, and files
+     * @returns {Promise<Object>} Final result after job completion
+     * @throws {Error} If the job fails
+     */
+    static async generateAsync(formData) {
+        try {
+            // Submit the job
+            const response = await fetch('/api/generate-async', {
+                method: 'POST',
+                body: formData
+            });
+            
+            const submitData = await response.json();
+            
+            if (!response.ok) {
+                throw new Error(submitData.error || 'Failed to submit generation job');
+            }
+            
+            const jobId = submitData.job_id;
+            
+            // Poll for job completion
+            return await this.pollJobStatus(jobId);
+            
+        } catch (error) {
+            console.error('API Error - Async Generate:', error);
+            throw error;
+        }
+    }
+    
+    /**
+     * Poll job status until completion.
+     * 
+     * @param {string} jobId - The job ID to poll
+     * @returns {Promise<Object>} Final job result
+     */
+    static async pollJobStatus(jobId) {
+        const pollInterval = 2000; // Poll every 2 seconds
+        const maxWaitTime = 600000; // 10 minutes max
+        const startTime = Date.now();
+        
+        while (Date.now() - startTime < maxWaitTime) {
+            try {
+                const response = await fetch(`/api/job-status/${jobId}`);
+                const jobStatus = await response.json();
+                
+                if (!response.ok) {
+                    throw new Error(jobStatus.error || 'Failed to get job status');
+                }
+                
+                // Update UI with progress if available
+                if (this.onJobProgress) {
+                    this.onJobProgress(jobStatus);
+                }
+                
+                if (jobStatus.status === 'completed') {
+                    // Return result in same format as regular generation
+                    return {
+                        success: true,
+                        results: [jobStatus.result]
+                    };
+                } else if (jobStatus.status === 'failed') {
+                    throw new Error(jobStatus.message || 'Job failed');
+                }
+                
+                // Job still processing, wait before next poll
+                await new Promise(resolve => setTimeout(resolve, pollInterval));
+                
+            } catch (error) {
+                if (error.message.includes('Failed to get job status')) {
+                    // Continue polling for network issues
+                    await new Promise(resolve => setTimeout(resolve, pollInterval));
+                    continue;
+                }
+                throw error;
+            }
+        }
+        
+        throw new Error('Job timed out after 10 minutes');
+    }
+    
+    /**
+     * Check if a model generates videos (needs async processing).
+     * 
+     * @param {string} modelName - The model name
+     * @returns {Promise<boolean>} True if it's a video model
+     */
+    static async isVideoModel(modelName) {
+        try {
+            const modelInfo = await this.getModelInfo(modelName);
+            return modelInfo.output_type === 'video';
+        } catch (error) {
+            // If we can't get model info, assume it's not a video model
+            return false;
+        }
+    }
+    
+    /**
+     * Set a callback for job progress updates.
+     * 
+     * @param {Function} callback - Function to call with job status updates
+     */
+    static setJobProgressCallback(callback) {
+        this.onJobProgress = callback;
     }
     
     /**
