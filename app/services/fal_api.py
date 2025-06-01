@@ -778,20 +778,9 @@ class FalApiService:
                     logger.info(f"Added ip_adapters to payload for FLUX model (image length: {len(img_str)})")
                 # Special handling for video models
                 elif model.get('type') == 'image-to-video':
-                    # Video models often need a nested 'input' object
-                    payload = {
-                        'input': {
-                            'image_url': f"{DATA_URI_PREFIX_PNG}{img_str}"
-                        }
-                    }
-                    # Add parameters to the input object
-                    if 'params' in model:
-                        payload['input'].update(model['params'])
-                    logger.info(f"Added image and params to video model payload")
-                    
-                    # Some video models might require the image_url at the root level too
+                    # Video models use flat structure, not nested input
                     payload['image_url'] = f"{DATA_URI_PREFIX_PNG}{img_str}"
-                    logger.info(f"Added root-level image_url for video model")
+                    logger.info(f"Added image_url to video model payload (length: {len(img_str)})")
                 else:
                     # Standard image_url format for other models like Stable Diffusion
                     payload['image_url'] = f"{DATA_URI_PREFIX_PNG}{img_str}"
