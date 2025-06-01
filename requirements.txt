@@ -8,7 +8,7 @@ requests==2.31.0
 # Using pre-compiled binaries rather than source build
 --find-links https://pypi.org/simple/pillow/
 --only-binary :all:
-Pillow==10.1.0
+Pillow==10.4.0
 Flask-SQLAlchemy==3.1.1
 Flask-Migrate==4.0.5
 Flask-Login==0.6.3
@@ -24,15 +24,16 @@ pymysql==1.1.0
 cryptography==41.0.7
 email-validator==2.1.0
 itsdangerous==2.1.2
-# For Redis session storage (alternative to filesystem)
+# For Redis session storage and background jobs
 redis==5.0.1
+celery==5.3.4
 # Additional utilities
 python-dateutil==2.8.2
 pytz==2023.3.post1
 # For Heroku-specific features
 dj-database-url==2.1.0
 
-# New dependencies from the code block
+# Additional dependencies
 google-auth==2.25.2
 google-auth-oauthlib==1.2.0
 blinker==1.7.0
@@ -51,5 +52,4 @@ urllib3==2.1.0
 cachetools==5.3.2
 certifi==2023.11.17
 charset-normalizer==3.3.2
-idna==3.6
-celery==5.3.4 
+idna==3.6 
