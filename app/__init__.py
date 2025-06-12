@@ -172,9 +172,29 @@ def create_app(config_name=None):
     redis_url = os.environ.get('REDIS_URL')
     if redis_url and 'DYNO' in os.environ:
         # Use Redis if available (better for Heroku)
-        app.config['SESSION_TYPE'] = 'redis'
-        app.config['SESSION_REDIS'] = redis_url
-        print("Using Redis for session storage")
+        try:
+            import redis
+            redis_client = redis.from_url(redis_url, decode_responses=True)
+            # Test the connection
+            redis_client.ping()
+            app.config['SESSION_TYPE'] = 'redis'
+            app.config['SESSION_REDIS'] = redis_client
+            print("Using Redis for session storage")
+        except Exception as e:
+            print(f"Failed to connect to Redis: {e}")
+            print("Falling back to filesystem sessions")
+            # Fall back to filesystem sessions
+            if 'DYNO' in os.environ:
+                app.config['SESSION_FILE_DIR'] = '/tmp/flask_session'
+                print(f"Using filesystem sessions with path: /tmp/flask_session")
+            else:
+                app.config['SESSION_FILE_DIR'] = os.path.join(os.getcwd(), 'flask_session')
+                print(f"Using filesystem sessions with path: {os.path.join(os.getcwd(), 'flask_session')}")
+            
+            # Create session directory if it doesn't exist
+            if not os.path.exists(app.config['SESSION_FILE_DIR']):
+                os.makedirs(app.config['SESSION_FILE_DIR'], exist_ok=True)
+                print(f"Created session directory: {app.config['SESSION_FILE_DIR']}")
     else:
         # Use filesystem sessions, setting the path based on environment
         if 'DYNO' in os.environ:
